@@ -9,7 +9,7 @@
     <script type="text/javascript" src="gl-matrix.js"></script>
     <script type="text/javascript" src="geometry.js"></script>
     <style type="text/css">
-        /*canvas {
+        canvas {
             width: 100%;
             height: 100%;
             display: block;
@@ -18,7 +18,7 @@
         {
             margin: 0;
             overflow: hidden;
-        }*/
+        }
 
     </style>
     <script type="text/javascript">
@@ -68,17 +68,7 @@ void main( )
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
 precision mediump float;
 
-in vec3 normal;
-in vec3 fragPos;
-in vec2 vTexCoord;
-uniform sampler2D uTexture;
-
 out vec4 fragColor;
-
-uniform UBO {
-    mat4 projection;
-    mat4 view;
-};
 
 void main( )
 {
@@ -104,10 +94,13 @@ void main( )
     // TODO: ShaderProgram debe ser algún Programa que crees y que contenga el UBO
     let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); // Aquí añade todos los uniformes que quieres compartir
 
-    ubo.attachProgram( shaderProgram );
+ubo.attachProgram( shaderProgram );
     // TODO: Realiza esta llamada con cada programa que vayas a utilizar 
+    // ubo.attachProgram( shaderProgram );
+
+
     // ---------------------------------------------------
-    const sphereGeo = createSphere( );
+const sphereGeo = createSphere( );
     const ringGeo = createRing( );
 
     let VAO, VBO, VBO2, VBO3, VBO4, EBO;
@@ -151,19 +144,30 @@ void main( )
     // }
     // ---------------------------------------------------
     // TODO: Crea una esfera y sube la geometría a la tarjeta gráfica
-    
 
     shaderProgram.autocatching();
 
+    var timeAccel = 1;
+    var earthDistance = 10;
+    var moonDistance = 2;
+    var sunPos = [0.0, 0.0, 0.0];
+
+    var earthYearDuration = 365.0;
+    var moonYearDuration = 28.0;
+
+    var earthDayNumber = 365.0;
+
     gl.clearColor( 1.0, 0.5, 0.0, 1.0 );
     gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
-
+    // --------------------------------------------------------------------
+    // ------------------------{ RENDER FUNC }-----------------------------
+    // --------------------------------------------------------------------
     function renderFunc( time )
     {
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
-        time *= 0.001; // to seconds
+        time *= 0.001 * timeAccel; // to seconds
 
     	var proj = mat4.create( );
     	mat4.perspective(proj, Math.radians( 60.0 ), gl.canvas.width/gl.canvas.height, 0.001, 1000.0 );
@@ -178,6 +182,40 @@ void main( )
         ubo.uploadAll( ); // Esta llamada sube todos los datos de golpe
         
         // A partir de aquí, subimos matriz model y demás cosas para cada esfera.
+
+
+        let modelSun = mat4.create();
+        let modelEarth = mat4.create();
+        let modelMoon = mat4.create();
+
+
+        mat4.translate(modelSun, modelSun, sunPos);
+
+        var earthTime = time / earthYearDuration;
+        var earthPosX = cos(earthTime);
+        var earthPosZ = sin(earthTime);
+        var earthPos = sunPos + [earthPosX, 0.0, earthPosZ] * earthDistance;
+        mat4.translate(modelEarth, modelEarth, earthPos);
+        mat4.rotate(modelEarth, modelEarth, Math.radians(earthTime * earthDayNumber), [0.0 ,1.0, 0.0]);
+        
+        var moonTime = time / 28;
+        var moonPosX = cos(moonTime);
+        var moonPosZ = sin(moonTime);
+        var moonPos = earthPos + [moonPosX, 0.0, moonPosZ] * moonDistance;
+        mat4.translate(modelMoon, modelMoon, moonPos);
+
+        var moonDirection = earthPos - moonPos;
+        vec3.normalize(moonDirection, moonDirection);
+        var moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
+        mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
+        
+        var models = [modelSun, modelEarth, modelMoon];
+        for(var i = 0; i < models.length; i ++) {
+            shaderProgram.setUniformMat4("model", models[i]);
+            gl.drawElements(gl.TRIANGLES, 32, gl.UNSIGNED_INT, 0);
+        }
+        
+        
 
         requestAnimationFrame( renderFunc );
     }
