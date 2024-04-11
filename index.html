@@ -38,22 +38,29 @@
 <script id="shader-vs" type="x-shader/x-vertex">#version 300 es
 precision mediump float;
 
-layout(location = 0) in
-layout(location = 0) in
-layout(location = 0) in
-layout(location = 0) in 
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aTexCoord
 
 uniform mat4 model;
 
-// Unif. Buffer Object
 uniform UBO {
     mat4 projection;
     mat4 view;
 };
 
+out vec3 normal;
+out vec3 fragPos;
+out vec2 vTexCoord;
+
 void main( )
 {
-    gl_Position = projection * view * model * vec4( ... );
+    fragPos = vec3(model * vec4(aPos, 1.0));
+    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    mat3 normalM = mat3(transpose(inverse(model)));
+    normal = normalM * aNormal;
+
+    vTexCoord = aTexCoord;
 }
 
 </script>
@@ -75,7 +82,7 @@ uniform UBO {
 
 void main( )
 {
-    fragColor = vec4( ... )
+    fragColor = vec4(1.0,1.0,1.0,1.0);
 }
 </script>
 
