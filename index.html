@@ -202,9 +202,12 @@ const sphereGeo = createSphere( );
         var moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
         mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
         
-        shaderProgram.setUniformMat4("modelSun", modelSun);
-        shaderProgram.setUniformMat4("modelEarth", modelEarth);
-        shaderProgram.setUniformMat4("modelMoon", modelMoon);
+        var models = [modelSun, modelEarth, modelMoon];
+        for(var i = 0; i < models.length; i ++) {
+            shaderProgram.setUniformMat4("model", models[i]);
+            gl.drawElements(gl.TRIANGLES, 32, gl.UNSIGNED_INT, 0);
+        }
+        
         
 
         requestAnimationFrame( renderFunc );
