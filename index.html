@@ -9,7 +9,7 @@
     <script type="text/javascript" src="gl-matrix.js"></script>
     <script type="text/javascript" src="geometry.js"></script>
     <style type="text/css">
-        canvas {
+        /*canvas {
             width: 100%;
             height: 100%;
             display: block;
@@ -18,7 +18,7 @@
         {
             margin: 0;
             overflow: hidden;
-        }
+        }*/
 
     </style>
     <script type="text/javascript">
@@ -38,6 +38,13 @@
 <script id="shader-vs" type="x-shader/x-vertex">#version 300 es
 precision mediump float;
 
+layout(location = 0) in
+layout(location = 0) in
+layout(location = 0) in
+layout(location = 0) in 
+
+uniform mat4 model;
+
 // Unif. Buffer Object
 uniform UBO {
     mat4 projection;
@@ -54,7 +61,17 @@ void main( )
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
 precision mediump float;
 
+in vec3 normal;
+in vec3 fragPos;
+in vec2 vTexCoord;
+uniform sampler2D uTexture;
+
 out vec4 fragColor;
+
+uniform UBO {
+    mat4 projection;
+    mat4 view;
+};
 
 void main( )
 {
@@ -64,7 +81,7 @@ void main( )
 
 </head>
 <body>
-<canvas id="myCanvas" width="500" height="500"></canvas>
+<canvas id="myCanvas" width="1024" height="760"></canvas>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
 
@@ -78,13 +95,45 @@ void main( )
     // QUE HARÁN USO DE ESTE UBO
     // ---------------------------------------------------
     // TODO: ShaderProgram debe ser algún Programa que crees y que contenga el UBO
-    //let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); // Aquí añade todos los uniformes que quieres compartir
+    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); // Aquí añade todos los uniformes que quieres compartir
 
+    ubo.attachProgram( shaderProgram );
     // TODO: Realiza esta llamada con cada programa que vayas a utilizar 
-    // ubo.attachProgram( shaderProgram );
-
-
     // ---------------------------------------------------
+    const sphereGeo = createSphere( );
+    const ringGeo = createRing( );
+
+    let VAO, VBO, VBO2, VBO3, VBO4, EBO;
+    VAO = gl.createVertexArray();
+    VBO = gl.createBuffer();
+    VBO2 = gl.createBuffer();
+    VBO3 = gl.createBuffer();
+    VBO4 = gl.createBuffer();
+    EBO = gl.createBuffer();
+    gl.bindVertexArray(VAO);
+    // position attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.vertices), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+    // normal attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBO2);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.normals), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(1);
+    // texCoord attribute
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBO3);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.uvs), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(2);
+    // index attribute
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(sphereGeo.indices), gl.STATIC_DRAW);
+    // Unbind the VBO
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    // Unbind the VAO
+    gl.bindVertexArray(null);
+
     // CREA EL VAO, VBO'S Y EBO PARA LA ESFERA (createSphere())
     // CREA EL VAO, VOB'S Y EBO PARA EL ANILLO (createRing())
     //  {
@@ -95,8 +144,9 @@ void main( )
     // }
     // ---------------------------------------------------
     // TODO: Crea una esfera y sube la geometría a la tarjeta gráfica
-    const sphereGeo = createSphere( );
-    const ringGeo = createRing( );
+    
+
+    shaderProgram.autocatching();
 
     gl.clearColor( 1.0, 0.5, 0.0, 1.0 );
     gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
@@ -116,13 +166,11 @@ void main( )
         shaderProgram.bind( );
 
         // Aquí subimos los datos para la proyección y la vista
-        //ubo.uploadData( "projection", proj );
-        //ubo.uploadData( "view", view );
-        //ubo.uploadAll( ); // Esta llamada sube todos los datos de golpe
+        ubo.uploadData( "projection", proj );
+        ubo.uploadData( "view", view );
+        ubo.uploadAll( ); // Esta llamada sube todos los datos de golpe
         
         // A partir de aquí, subimos matriz model y demás cosas para cada esfera.
-
-
 
         requestAnimationFrame( renderFunc );
     }
@@ -167,8 +215,8 @@ void main( )
         }
     }
 
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    //window.addEventListener('resize', resizeCanvas);
+    //resizeCanvas();
 
     renderFunc( 0.0 );
 </script>
