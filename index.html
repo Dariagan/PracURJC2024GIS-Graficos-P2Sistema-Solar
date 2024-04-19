@@ -43,7 +43,7 @@ void main( )
 }
 </script>
 
-<script id="shader-fs" type="x-shader/x-fragment">#version 300 es
+<script id="earth-shader-fs" type="x-shader/x-fragment">#version 300 es
 precision mediump float;
 
 in vec3 normal;
@@ -52,85 +52,95 @@ in vec2 vTexCoord;
 
 out vec4 fragColor;
 
+uniform sampler2D uTexture;
+uniform sampler2D diffuseTexture;
+uniform sampler2D normalTexture;
+uniform sampler2D specularTexture;
+
 void main(){
     fragColor = vec4(1.0,1.0,1.0,1.0);
 }
 </script>
+
+<script id="shader-fs" type="x-shader/x-fragment">#version 300 es
+    precision mediump float;
+    
+    in vec3 normal;
+    in vec3 fragPos;
+    in vec2 vTexCoord;
+    
+    out vec4 fragColor;
+    
+    uniform sampler2D uTexture;
+    
+    void main(){
+        fragColor = vec4(1.0,1.0,1.0,1.0);
+    }
+    </script>
 
 </head>
 <body>
 <canvas id="myCanvas" width="1024" height="1024"></canvas>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
-
-    // ---------------------------------------------------
-    // CREAR TODOS LOS SHADERPROGRAMS QUE NECESITES
-    // ---------------------------------------------------
     let shaderProgram = new ShaderProgram( );
+    let earthShaderProgram = new ShaderProgram();
     shaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     shaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text);
-    shaderProgram.compile(); shaderProgram.link();
-
-    shaderProgram.autocatching();
+    earthShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
+    earthShaderProgram.createFragmentShader(document.getElementById( "earth-shader-fs" ).text);
+    shaderProgram.compile(); shaderProgram.link(); shaderProgram.autocatching();
+    earthShaderProgram.compile(); earthShaderProgram.link(); earthShaderProgram.autocatching();
 
     let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); 
-
-    ubo.attachProgram( shaderProgram );
+    ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram);
+    gl.clearColor( 1.0, 0.5, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    
 
     // ---------------------------------------------------
     const sphereGeo = createSphere( );
     const ringGeo = createRing( );
 
-    let VAO, VBO, VBO2, VBO3, VBO4, EBO;
+    let VAO;
+    let VBOsphereVert, VBOsphereNorm, VBOsphereUvs, EBOsphere;
+    let VBOringVert, VBOringNorm, VBOringUvs, EBOring;
+
     VAO = gl.createVertexArray();
-    VBO = gl.createBuffer();
-    VBO2 = gl.createBuffer();
-    VBO3 = gl.createBuffer();
-    EBO = gl.createBuffer();
+    VBOsphereVert = gl.createBuffer(); VBOsphereNorm = gl.createBuffer(); VBOsphereUvs = gl.createBuffer(); EBOsphere = gl.createBuffer();
     gl.bindVertexArray(VAO);
     // position attribute
-    gl.bindBuffer(gl.ARRAY_BUFFER, VBO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereVert);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.vertices), gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
     // normal attribute
-    gl.bindBuffer(gl.ARRAY_BUFFER, VBO2);
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereNorm);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.normals), gl.STATIC_DRAW);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(1);
     // texCoord attribute
-    gl.bindBuffer(gl.ARRAY_BUFFER, VBO3);
+    gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereUvs);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.uvs), gl.STATIC_DRAW);
     gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(2);
     // index attribute
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(sphereGeo.indices), gl.STATIC_DRAW);
-    // Unbind the VBO
+    
+    // Unbind 
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    // Unbind the VAO
     gl.bindVertexArray(null);
-
-    // CREA EL VAO, VBO'S Y EBO PARA LA ESFERA (createSphere())
-    // CREA EL VAO, VOB'S Y EBO PARA EL ANILLO (createRing())
-    //  {
-    //    "vertices": vertices,
-    //    normals: normals,
-    //    texCoords: uvs,
-    //    indices: indices
-    // }
-    // ---------------------------------------------------
-    // TODO: Crea una esfera y sube la geometría a la tarjeta gráfica
+    
    // VECTORS OF LOOKAT MATRIX
    
-    var cameraPos   = new Float32Array([0.0, 500.0, 0.0]);
+    var cameraPos   = new Float32Array([0.0, 80.0, 0.0]);
     var cameraFront = new Float32Array([0.0, 0.0, 0.0]);
     var cameraUp    = new Float32Array([0.0, 1.0, 0.0]);
     var yaw = 0.0; var pitch = -90.0; 
 
-    const timeAccel = 1;
-    const earthDistance = 10;
-    const moonDistance = 2;
+    const timeAccel = 200;
+    const astronomicUnit = 30;
+    const moonDistance = 4;
     const sunPos = vec3.create();
     const earthPos = vec3.create();
     const moonPos =  vec3.create();
@@ -138,13 +148,47 @@ void main(){
     const moonYearDuration = 28.0; // in earth days
     const earthDayNumber = 365.0; // days in one year
 
-    let modelSun = mat4.create();
-    let modelEarth = mat4.create();
-    let modelMoon = mat4.create();
+    const FOLDER = "resources/"
+    const SOURCES = {
+        EARTH: {
+            CLOUDS: FOLDER + "earth_clouds.png",
+            DIFFUSE: FOLDER + "earth_diffuse.jpg",
+            NORMAL: FOLDER + "earth_normal.jpg",
+            SPECULAR: FOLDER + "earth_specular.jpg",
+        },
+        MOON: FOLDER + "moon.png",
+        SUN: FOLDER + "sun.png",
+        JUPITER: FOLDER + "jupiter.png",
+        SATURN: FOLDER + "saturn.png",
+    }
+    
+    let texturesIds = new Array(Object.values(SOURCES).length);
+      
+    const textureCallback = function(){
+            gl.bindTexture(gl.TEXTURE_2D, texturesIds[i]);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.generateMipmap(gl.TEXTURE_2D);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        };    
 
+    
+    for(const [key, val] of Object.entries(SOURCES)){
+        if (key === "EARTH"){
+            
+        }
+        else{
+            SOURCES.key.id = gl.createTexture();
+            let texture = new Image();
 
-    gl.clearColor( 1.0, 0.5, 0.0, 1.0 );
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            texture.onload = textureCallback;
+            
+            texture.src = Object.values(SOURCES)[i];
+        }        
+        
+    }
+
     // --------------------------------------------------------------------
     // ------------------------{ RENDER FUNC }-----------------------------
     // --------------------------------------------------------------------
@@ -191,48 +235,99 @@ void main(){
         ubo.uploadAll( );
 
         // PLANETS
+        let modelSun = mat4.create();
+        let modelMercury = mat4.create();
+        let modelVenus = mat4.create();
+        let modelEarth = mat4.create();
+        let modelEarthAtm = mat4.create();
+        let modelMoon = mat4.create();
+        let modelMars = mat4.create();
+        let modelJupiter = mat4.create();
+        let modelSaturn = mat4.create();
+        let modelUranus = mat4.create();
+        let modelNeptune = mat4.create();
+
+        //SUN
         mat4.translate(modelSun, modelSun, sunPos);
+        // PLANETS
+        let models = [modelMercury, modelVenus, modelMars, modelJupiter, modelSaturn, modelUranus, modelNeptune];
+        let years = [88.0, 224.7, 4332.0, 29.5 * 365.0, 84.0 * 365.0, 165.0 * 365.0];
+        let days = [59.0, -243.0, 1, 10.0/24.0, 10.3 / 24.0, 17.0/24, 16.0/24.0];
+        let distances = [0.38, 0.72, 1.52 , 5.21,  9.54, 19.18, 30.11];
+        for(let i = 0; i < 7; i ++) {
+            const planetTime = time / years[i];
+            const relativePlanetPos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)])
+                .map(x => x * 1 * distances[i] * astronomicUnit);
 
-        
+            mat4.translate(models[i], models[i], relativePlanetPos);
+            mat4.multiply(models[i], models[i], modelSun);
+            mat4.rotate(models[i], models[i], Math.radians(planetTime * days[i]), new Float32Array([0.0 ,1.0, 0.0]));
+
+        }
+        //EARTH
+        // setting its relative position
         const earthTime = time / earthYearDuration;
-       
-        const relativeEarthPos = new Float32Array([Math.cos(earthTime), 0.0, Math.sin(earthTime)]);
-        //console.log(sunPos);
-        relativeEarthPos[0] *= earthDistance;
-        relativeEarthPos[2] *= earthDistance ;
-        console.log(relativeEarthPos);
+        const relativeEarthPos = new Float32Array([Math.cos(earthTime), 0.0, Math.sin(earthTime)])
+            .map(x => x * 1 * astronomicUnit);
+        // setting its position with the sun 
+        mat4.translate(modelEarth, modelEarth, relativeEarthPos);
+        mat4.multiply(modelEarth, modelEarth, modelSun);
+        mat4.scale(modelEarthAtm, modelEarth,[1.1, 1.1, 1.1]);
+        //Making rotation of the earth
+        mat4.rotate(modelEarth, modelEarth, Math.radians(time), new Float32Array([0.0 ,1.0, 0.0]));
+        //Making rotation of the atmosphere
+        mat4.rotate(modelEarthAtm, modelEarthAtm, Math.radians(time * 0.5), new Float32Array([0.0 ,1.0, 0.0]));
 
-        //relativeEarthPos = relativeEarthPos.map(x => x * earthDistance);
-        vec3.add(earthPos, sunPos, relativeEarthPos);
-        mat4.translate(modelEarth, modelEarth, earthPos);
-        //mat4.rotate(modelEarth, modelEarth, Math.radians(time), new Float32Array([0.0 ,1.0, 0.0]));
-        /*
+        //MOON
         const moonTime = time / 28;
         const relativeMoonPos = new Float32Array([Math.cos(moonTime), 0.0, Math.sin(moonTime)])
             .map(x => x * moonDistance);
-            
         vec3.add(moonPos, earthPos, relativeMoonPos);
-
-        mat4.translate(modelMoon, modelMoon, moonPos);
+        mat4.translate(modelMoon, modelMoon, relativeMoonPos);
+        mat4.multiply(modelMoon, modelMoon, modelEarth);
+        //the moon always looks at the earth
         var moonDirection = vec3.create();
         vec3.subtract(moonDirection, earthPos, moonPos);
         vec3.normalize(moonDirection, moonDirection);
         const moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
-        //mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
-        */
-        /*
-        vec
-        mat4.scale(modelSun, modelSun, new Float32Array([5.0, 5.0]));
-        mat4.scale(modelEarth, modelEarth, new Float32Array([2.0, 2.0]));
-*/
-        gl.bindVertexArray(VAO);
+        mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
+        
+        //SCALES
+        mat4.scale(modelSun, modelSun, [5, 5, 5]);
+        mat4.scale(modelEarth, modelEarth,[2, 2, 2]);
+        mat4.scale(modelMoon, modelMoon,[0.8, 0.8, 0.8]);
 
+        //DRAW PLANETS
+        gl.bindVertexArray(VAO);
         shaderProgram.setUniformMat4("model", modelSun);
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        shaderProgram.setUniformMat4("model", modelEarth);
+        shaderProgram.setUniformMat4("model", modelMoon);
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        //shaderProgram.setUniformMat4("model", modelMoon);
-        //gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+        for(let i = 0; i < 7; i ++) {
+            shaderProgram.setUniformMat4("model", models[i]);
+            gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+        }
+
+        //DRAW EARTH
+        earthShaderProgram.bind();
+        earthShaderProgram.setUniformMat4("model", modelEarth);
+        earthShaderProgram.setUniform1i( "uTexture", 0);
+        earthShaderProgram.setUniform1i( "diffuseTexture", 1);
+        earthShaderProgram.setUniform1i( "specularTexture", 2);
+        earthShaderProgram.setUniform1i( "normalTexture", 3);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture( gl.TEXTURE_2D, texturesIds[0]);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.activeTexture(gl.TEXTURE2);
+        gl.activeTexture(gl.TEXTURE3);
+        
+        
+
+        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+        earthShaderProgram.setUniformMat4("model", modelEarthAtm);
+        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+
 
         gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
