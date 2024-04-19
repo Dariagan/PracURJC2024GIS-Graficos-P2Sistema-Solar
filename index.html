@@ -1,53 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title></title>
+    <title>Prác.2 Remi y Stefano</title>
     <script type="text/javascript" src="auxiliars.js"></script>
     <script type="text/javascript" src="shader.js"></script>
     <script type="text/javascript" src="ubo.js"></script>
     <script type="text/javascript" src="cube.js"></script>
     <script type="text/javascript" src="gl-matrix.js"></script>
     <script type="text/javascript" src="geometry.js"></script>
-    <style type="text/css">
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        body
-        {
-            margin: 0;
-            overflow: hidden;
-        }
-
-    </style>
+    <style type="text/css">/*canvas {width: 100%;height: 100%;display: block;}body{margin: 0;overflow: hidden;}*/</style>
     <script type="text/javascript">
-        const mat4 = glMatrix.mat4;
-        const vec3 = glMatrix.vec3;
-        const vec2 = glMatrix.vec2;
-        // Converts from degrees to radians.
-        Math.radians = function(degrees) {
-          return degrees * Math.PI / 180;
-        };
-         
-        // Converts from radians to degrees.
-        Math.degrees = function(radians) {
-          return radians * 180 / Math.PI;
-        };
+        const mat4 = glMatrix.mat4; const vec3 = glMatrix.vec3; const vec2 = glMatrix.vec2;
+        Math.radians = function(degrees) {return degrees * Math.PI / 180;};
+        Math.degrees = function(radians) {return radians * 180 / Math.PI;};
     </script>
 <script id="shader-vs" type="x-shader/x-vertex">#version 300 es
 precision mediump float;
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
-layout(location = 2) in vec2 aTexCoord
+layout(location = 2) in vec2 aTexCoord;
 
 uniform mat4 model;
 
 uniform UBO {
     mat4 projection;
     mat4 view;
-};
+};  
 
 out vec3 normal;
 out vec3 fragPos;
@@ -62,23 +41,25 @@ void main( )
 
     vTexCoord = aTexCoord;
 }
-
 </script>
 
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
 precision mediump float;
 
+in vec3 normal;
+in vec3 fragPos;
+in vec2 vTexCoord;
+
 out vec4 fragColor;
 
-void main( )
-{
+void main(){
     fragColor = vec4(1.0,1.0,1.0,1.0);
 }
 </script>
 
 </head>
 <body>
-<canvas id="myCanvas" width="1024" height="760"></canvas>
+<canvas id="myCanvas" width="1024" height="1024"></canvas>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
 
@@ -86,21 +67,18 @@ void main( )
     // CREAR TODOS LOS SHADERPROGRAMS QUE NECESITES
     // ---------------------------------------------------
     let shaderProgram = new ShaderProgram( );
+    shaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
+    shaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text);
+    shaderProgram.compile(); shaderProgram.link();
+
+    shaderProgram.autocatching();
+
+    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); 
+
+    ubo.attachProgram( shaderProgram );
 
     // ---------------------------------------------------
-    // CREAMOS EL UBO Y VINCULAMOS TODOS LOS SHADERPROGRAM
-    // QUE HARÁN USO DE ESTE UBO
-    // ---------------------------------------------------
-    // TODO: ShaderProgram debe ser algún Programa que crees y que contenga el UBO
-    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); // Aquí añade todos los uniformes que quieres compartir
-
-ubo.attachProgram( shaderProgram );
-    // TODO: Realiza esta llamada con cada programa que vayas a utilizar 
-    // ubo.attachProgram( shaderProgram );
-
-
-    // ---------------------------------------------------
-const sphereGeo = createSphere( );
+    const sphereGeo = createSphere( );
     const ringGeo = createRing( );
 
     let VAO, VBO, VBO2, VBO3, VBO4, EBO;
@@ -108,7 +86,6 @@ const sphereGeo = createSphere( );
     VBO = gl.createBuffer();
     VBO2 = gl.createBuffer();
     VBO3 = gl.createBuffer();
-    VBO4 = gl.createBuffer();
     EBO = gl.createBuffer();
     gl.bindVertexArray(VAO);
     // position attribute
@@ -144,79 +121,120 @@ const sphereGeo = createSphere( );
     // }
     // ---------------------------------------------------
     // TODO: Crea una esfera y sube la geometría a la tarjeta gráfica
+   // VECTORS OF LOOKAT MATRIX
+   
+    var cameraPos   = new Float32Array([0.0, 500.0, 0.0]);
+    var cameraFront = new Float32Array([0.0, 0.0, 0.0]);
+    var cameraUp    = new Float32Array([0.0, 1.0, 0.0]);
+    var yaw = 0.0; var pitch = -90.0; 
 
-    shaderProgram.autocatching();
+    const timeAccel = 1;
+    const earthDistance = 10;
+    const moonDistance = 2;
+    const sunPos = vec3.create();
+    const earthPos = vec3.create();
+    const moonPos =  vec3.create();
+    const earthYearDuration = 365.0; // in earth days
+    const moonYearDuration = 28.0; // in earth days
+    const earthDayNumber = 365.0; // days in one year
 
-    var timeAccel = 1;
-    var earthDistance = 10;
-    var moonDistance = 2;
-    var sunPos = [0.0, 0.0, 0.0];
+    let modelSun = mat4.create();
+    let modelEarth = mat4.create();
+    let modelMoon = mat4.create();
 
-    var earthYearDuration = 365.0;
-    var moonYearDuration = 28.0;
-
-    var earthDayNumber = 365.0;
 
     gl.clearColor( 1.0, 0.5, 0.0, 1.0 );
-    gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     // --------------------------------------------------------------------
     // ------------------------{ RENDER FUNC }-----------------------------
     // --------------------------------------------------------------------
     function renderFunc( time )
     {
+        gl.viewport(0, 0, 1024 , 1024);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
-        time *= 0.001 * timeAccel; // to seconds
+        time *= timeAccel * 0.001; // to seconds
 
-    	var proj = mat4.create( );
-    	mat4.perspective(proj, Math.radians( 60.0 ), gl.canvas.width/gl.canvas.height, 0.001, 1000.0 );
-    	var view = mat4.create( );
+    	
+        // ----{ CAMERA MATRICES }----
+        // PROJ MATRIX
+        let proj = mat4.create();
+        mat4.perspective(proj, Math.radians(60.0), 1.0, 0.001, 1000.0);
 
-        // TODO: Tienes que activar al menos un programa
+        // VIEW MATRIX
+        const yawRadians = Math.radians(yaw);
+        const pitchRadians = Math.radians(pitch);
+        const cosYaw = Math.cos(yawRadians);
+        const sinYaw = Math.sin(yawRadians);
+        const cosPitch = Math.cos(pitchRadians);
+        const sinPitch = Math.sin(pitchRadians);
+        
+        let direction = vec3.create();
+        direction[0] = cosYaw * cosPitch;
+        direction[1] = sinPitch;
+        direction[2] = sinYaw * cosPitch;
+        vec3.normalize(cameraFront, direction);
+
+        let camPosFront = vec3.create();
+        vec3.add(camPosFront, cameraPos, cameraFront);
+        
+        let view = mat4.create();
+        mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
+
+     
         shaderProgram.bind( );
 
-        // Aquí subimos los datos para la proyección y la vista
-        ubo.uploadData( "projection", proj );
-        ubo.uploadData( "view", view );
-        ubo.uploadAll( ); // Esta llamada sube todos los datos de golpe
-        
-        // A partir de aquí, subimos matriz model y demás cosas para cada esfera.
+        ubo.uploadData("projection", proj);
+        ubo.uploadData("view", view);
+        ubo.uploadAll( );
 
-
-        let modelSun = mat4.create();
-        let modelEarth = mat4.create();
-        let modelMoon = mat4.create();
-
-
+        // PLANETS
         mat4.translate(modelSun, modelSun, sunPos);
 
-        var earthTime = time / earthYearDuration;
-        var earthPosX = cos(earthTime);
-        var earthPosZ = sin(earthTime);
-        var earthPos = sunPos + [earthPosX, 0.0, earthPosZ] * earthDistance;
+        
+        const earthTime = time / earthYearDuration;
+       
+        const relativeEarthPos = new Float32Array([Math.cos(earthTime), 0.0, Math.sin(earthTime)]);
+        //console.log(sunPos);
+        relativeEarthPos[0] *= earthDistance;
+        relativeEarthPos[2] *= earthDistance ;
+        console.log(relativeEarthPos);
+
+        //relativeEarthPos = relativeEarthPos.map(x => x * earthDistance);
+        vec3.add(earthPos, sunPos, relativeEarthPos);
         mat4.translate(modelEarth, modelEarth, earthPos);
-        mat4.rotate(modelEarth, modelEarth, Math.radians(earthTime * earthDayNumber), [0.0 ,1.0, 0.0]);
-        
-        var moonTime = time / 28;
-        var moonPosX = cos(moonTime);
-        var moonPosZ = sin(moonTime);
-        var moonPos = earthPos + [moonPosX, 0.0, moonPosZ] * moonDistance;
+        //mat4.rotate(modelEarth, modelEarth, Math.radians(time), new Float32Array([0.0 ,1.0, 0.0]));
+        /*
+        const moonTime = time / 28;
+        const relativeMoonPos = new Float32Array([Math.cos(moonTime), 0.0, Math.sin(moonTime)])
+            .map(x => x * moonDistance);
+            
+        vec3.add(moonPos, earthPos, relativeMoonPos);
+
         mat4.translate(modelMoon, modelMoon, moonPos);
-
-        var moonDirection = earthPos - moonPos;
+        var moonDirection = vec3.create();
+        vec3.subtract(moonDirection, earthPos, moonPos);
         vec3.normalize(moonDirection, moonDirection);
-        var moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
-        mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
-        
-        var models = [modelSun, modelEarth, modelMoon];
-        for(var i = 0; i < models.length; i ++) {
-            shaderProgram.setUniformMat4("model", models[i]);
-            gl.drawElements(gl.TRIANGLES, 32, gl.UNSIGNED_INT, 0);
-        }
-        
-        
+        const moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
+        //mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
+        */
+        /*
+        vec
+        mat4.scale(modelSun, modelSun, new Float32Array([5.0, 5.0]));
+        mat4.scale(modelEarth, modelEarth, new Float32Array([2.0, 2.0]));
+*/
+        gl.bindVertexArray(VAO);
 
+        shaderProgram.setUniformMat4("model", modelSun);
+        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+        shaderProgram.setUniformMat4("model", modelEarth);
+        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+        //shaderProgram.setUniformMat4("model", modelMoon);
+        //gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+
+        gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
     }
 
