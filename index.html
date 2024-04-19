@@ -164,27 +164,33 @@ void main(){
     
     let texturesIds = new Array(Object.values(SOURCES).length);
       
-    const textureCallback = function(){
-            gl.bindTexture(gl.TEXTURE_2D, texturesIds[i]);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture);
+    const textureCallback = function(tex, texId){
+            return function(){
+            gl.bindTexture(gl.TEXTURE_2D, texId);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tex);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.generateMipmap(gl.TEXTURE_2D);
             gl.bindTexture(gl.TEXTURE_2D, null);
+            }
         };    
 
-    
     for(const [key, val] of Object.entries(SOURCES)){
         if (key === "EARTH"){
-            
+            for(const [skey, sval] of Object.entries(SOURCES.EARTH)){
+                SOURCES.EARTH[skey].id = gl.createTexture();
+                let texture = new Image();
+                texture.onload = textureCallback;
+                texture.src
+            }
         }
         else{
-            SOURCES.key.id = gl.createTexture();
+            SOURCES[key].id = gl.createTexture();
             let texture = new Image();
 
             texture.onload = textureCallback;
             
-            texture.src = Object.values(SOURCES)[i];
+            texture.src = val;
         }        
         
     }
