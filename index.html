@@ -52,13 +52,13 @@ in vec2 vTexCoord;
 
 out vec4 fragColor;
 
-uniform sampler2D uTexture;
+uniform sampler2D cloudsTexture;
 uniform sampler2D diffuseTexture;
 uniform sampler2D normalTexture;
 uniform sampler2D specularTexture;
 
 void main(){
-    fragColor = vec4(1.0,1.0,1.0,1.0);
+    fragColor = vec4(texture(diffuseTexture, vTexCoord).rgb, 1.0);
 }
 </script>
 
@@ -71,7 +71,7 @@ void main(){
     
     out vec4 fragColor;
     
-    uniform sampler2D uTexture;
+    uniform sampler2D planetTexture;
     
     void main(){
         fragColor = vec4(1.0,1.0,1.0,1.0);
@@ -148,51 +148,48 @@ void main(){
     const moonYearDuration = 28.0; // in earth days
     const earthDayNumber = 365.0; // days in one year
 
+    const PLANET_TEXTURE = "planetTexture"
     const FOLDER = "resources/"
-    const SOURCES = {
+    const TEXTURES = {
         EARTH: {
-            CLOUDS: FOLDER + "earth_clouds.png",
-            DIFFUSE: FOLDER + "earth_diffuse.jpg",
-            NORMAL: FOLDER + "earth_normal.jpg",
-            SPECULAR: FOLDER + "earth_specular.jpg",
+            CLOUDS: {SRC: FOLDER + "earth_clouds.png", UV_NAME: "cloudsTexture"},
+            DIFFUSE: {SRC: FOLDER + "earth_diffuse.jpg", UV_NAME: "diffuseTexture"},
+            NORMAL: {SRC: FOLDER + "earth_normal.jpg", UV_NAME: "normalTexture"},
+            SPECULAR: {SRC: FOLDER + "earth_specular.jpg", UV_NAME: "specularTexture"},
         },
-        MOON: FOLDER + "moon.png",
-        SUN: FOLDER + "sun.png",
-        JUPITER: FOLDER + "jupiter.png",
-        SATURN: FOLDER + "saturn.png",
+        MOON: {SRC: FOLDER + "moon.png", UV_NAME: PLANET_TEXTURE},
+        SUN: {SRC: FOLDER + "sun.png", UV_NAME: PLANET_TEXTURE},
+        JUPITER: {SRC: FOLDER + "jupiter.png", UV_NAME: PLANET_TEXTURE},
+        SATURN: {SRC: FOLDER + "saturn.png", UV_NAME: PLANET_TEXTURE},
     }
     
-    let texturesIds = new Array(Object.values(SOURCES).length);
+    let texturesIds = new Array(Object.values(TEXTURES).length);
       
     const textureCallback = function(tex, texId){
-            return function(){
+        return function(){
             gl.bindTexture(gl.TEXTURE_2D, texId);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tex);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.generateMipmap(gl.TEXTURE_2D);
             gl.bindTexture(gl.TEXTURE_2D, null);
-            }
-        };    
-
-    for(const [key, val] of Object.entries(SOURCES)){
-        if (key === "EARTH"){
-            for(const [skey, sval] of Object.entries(SOURCES.EARTH)){
-                SOURCES.EARTH[skey].id = gl.createTexture();
-                let texture = new Image();
-                texture.onload = textureCallback;
-                texture.src
-            }
         }
-        else{
-            SOURCES[key].id = gl.createTexture();
-            let texture = new Image();
+    };    
 
-            texture.onload = textureCallback;
-            
-            texture.src = val;
+    for(const [key, val] of Object.entries(TEXTURES)){
+        if (key === "EARTH"){
+            for(const [skey, sval] of Object.entries(TEXTURES.EARTH)){
+                sval.id = gl.createTexture();
+                let texture = new Image();
+                texture.onload = textureCallback(texture, sval.id);
+                texture.src = sval.SRC;
+            }
+        }else{
+            val.id = gl.createTexture();
+            let texture = new Image();
+            texture.onload = textureCallback(texture, val.id);
+            texture.src = val.SRC;
         }        
-        
     }
 
     // --------------------------------------------------------------------
@@ -206,7 +203,6 @@ void main(){
         gl.enable( gl.DEPTH_TEST );
 
         time *= timeAccel * 0.001; // to seconds
-
     	
         // ----{ CAMERA MATRICES }----
         // PROJ MATRIX
@@ -233,7 +229,6 @@ void main(){
         let view = mat4.create();
         mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
 
-     
         shaderProgram.bind( );
 
         ubo.uploadData("projection", proj);
@@ -303,33 +298,42 @@ void main(){
         mat4.scale(modelEarth, modelEarth,[2, 2, 2]);
         mat4.scale(modelMoon, modelMoon,[0.8, 0.8, 0.8]);
 
+        
         //DRAW PLANETS
         gl.bindVertexArray(VAO);
         shaderProgram.setUniformMat4("model", modelSun);
+        // let i = 0;
+        // for(const [key, val] of Object.entries(TEXTURES)){
+        //     if(key == "EARTH") continue;
+
+        //     gl.activeTexture(gl.TEXTURE0 + i);
+        //     shaderProgram.setUniform1i( PLANET_TEXTURE, i);
+        //     gl.bindTexture( gl.TEXTURE_2D, val.id);
+        //     i++
+        // }
+
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
         shaderProgram.setUniformMat4("model", modelMoon);
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        for(let i = 0; i < 7; i ++) {
+        for(let i = 0; i < mo; i ++) {
             shaderProgram.setUniformMat4("model", models[i]);
+
+            //PARA CADA PLANETA, ACTIBAR SUS TEXTURAS PARTIENDO DE 0, DESP DIBUJAR
+
             gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
         }
 
         //DRAW EARTH
         earthShaderProgram.bind();
+        
+        let i = 0
         earthShaderProgram.setUniformMat4("model", modelEarth);
-        earthShaderProgram.setUniform1i( "uTexture", 0);
-        earthShaderProgram.setUniform1i( "diffuseTexture", 1);
-        earthShaderProgram.setUniform1i( "specularTexture", 2);
-        earthShaderProgram.setUniform1i( "normalTexture", 3);
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture( gl.TEXTURE_2D, texturesIds[0]);
-        gl.activeTexture(gl.TEXTURE1);
-        gl.activeTexture(gl.TEXTURE2);
-        gl.activeTexture(gl.TEXTURE3);
-        
-        
-
+        for(const [key, val] of Object.entries(TEXTURES.EARTH)){
+            gl.activeTexture(gl.TEXTURE0 + i);
+            earthShaderProgram.setUniform1i( val.UV_NAME, i);
+            gl.bindTexture( gl.TEXTURE_2D, val.id);
+            i++
+        }
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
         earthShaderProgram.setUniformMat4("model", modelEarthAtm);
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
