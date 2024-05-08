@@ -26,6 +26,7 @@ uniform mat4 model;
 uniform UBO {
     mat4 projection;
     mat4 view;
+    vec3 sunLightPos;
 };  
 
 out vec3 normal;
@@ -44,23 +45,79 @@ void main( )
 </script>
 
 <script id="earth-shader-fs" type="x-shader/x-fragment">#version 300 es
-precision mediump float;
+    precision mediump float;
+    
+    in vec3 normal;
+    in vec3 fragPos;
+    in vec2 vTexCoord;
+    
+    uniform sampler2D uTexture;
+    uniform sampler2D diffuseTexture;
+    uniform sampler2D normalTexture;
+    uniform sampler2D specularTexture;
 
-in vec3 normal;
-in vec3 fragPos;
-in vec2 vTexCoord;
+    out vec4 fragColor;
+    uniform vec3 cameraPos;
 
-out vec4 fragColor;
+    vec3 objectColor = vec3(0.0, 1.0, 1.0);
 
-uniform sampler2D uTexture;
-uniform sampler2D diffuseTexture;
-uniform sampler2D normalTexture;
-uniform sampler2D specularTexture;
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambientColor = vec3(1.0, 1.0, 1.0);
 
-void main(){
-    fragColor = vec4(1.0,1.0,1.0,1.0);
-}
+    // Diffuse 
+    float diffuseStrength = 0.6;
+    vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
+
+    // Specular
+    float specularStrength = 0.5;
+    float specularRadius = 32.0;
+    vec3 specularColor = vec3(1.0, 1.0, 1.0); 
+
+    uniform UBO {
+        mat4 projection;
+        mat4 view;
+        vec3 sunLightPos;
+    };  
+    
+    void main(){
+        vec3 norm = normalize(normal);
+
+        // Ambient
+        vec3 ambient = ambientStrength * ambientColor;
+
+        // Diffuse
+        vec3 lightDir = normalize(sunLightPos - fragPos);
+        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+
+        // specular
+        vec3 viewDir = normalize(fragPos - cameraPos );
+        vec3 reflectDir = reflect(lightDir, norm);
+        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+        
+        vec3 color = (ambient + specular + diffuse) * objectColor;
+        fragColor = vec4(color, 1.0);
+
+    }
 </script>
+<script id="sun-shader-fs" type="x-shader/x-fragment">#version 300 es
+    precision mediump float;
+
+    in vec3 normal;
+    in vec3 fragPos;
+    in vec2 vTexCoord;
+    
+    out vec4 fragColor;
+    
+    uniform sampler2D uTexture;
+    uniform sampler2D diffuseTexture;
+    uniform sampler2D normalTexture;
+    uniform sampler2D specularTexture;
+    
+    void main(){
+        fragColor = vec4(1.0,1.0,1.0,1.0);
+    }
+    </script>
 
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
     precision mediump float;
@@ -70,30 +127,72 @@ void main(){
     in vec2 vTexCoord;
     
     out vec4 fragColor;
-    
     uniform sampler2D uTexture;
+    uniform vec3 cameraPos;
+
+    vec3 objectColor = vec3(0.0, 1.0, 1.0);
+
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambientColor = vec3(1.0, 1.0, 1.0);
+
+    // Diffuse 
+    float diffuseStrength = 0.6;
+    vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
+
+    // Specular
+    float specularStrength = 0.5;
+    float specularRadius = 32.0;
+    vec3 specularColor = vec3(1.0, 1.0, 1.0); 
+
+    uniform UBO {
+        mat4 projection;
+        mat4 view;
+        vec3 sunLightPos;
+    };  
     
     void main(){
-        fragColor = vec4(1.0,1.0,1.0,1.0);
+        vec3 norm = normalize(normal);
+
+        // Ambient
+        vec3 ambient = ambientStrength * ambientColor;
+
+        // Diffuse
+        vec3 lightDir = normalize(sunLightPos - fragPos);
+        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+
+        // specular
+        vec3 viewDir = normalize(fragPos - cameraPos );
+        vec3 reflectDir = reflect(lightDir, norm);
+        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+        
+        vec3 color = (ambient + specular + diffuse) * objectColor;
+        fragColor = vec4(color, 1.0);
+
     }
     </script>
 
 </head>
 <body>
 <canvas id="myCanvas" width="1024" height="1024"></canvas>
+<script type="text/javascript" src="controls.js"></script>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
     let shaderProgram = new ShaderProgram( );
     let earthShaderProgram = new ShaderProgram();
+    let sunShaderProgram = new ShaderProgram();
     shaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     shaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text);
     earthShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     earthShaderProgram.createFragmentShader(document.getElementById( "earth-shader-fs" ).text);
+    sunShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
+    sunShaderProgram.createFragmentShader(document.getElementById( "sun-shader-fs" ).text);
     shaderProgram.compile(); shaderProgram.link(); shaderProgram.autocatching();
     earthShaderProgram.compile(); earthShaderProgram.link(); earthShaderProgram.autocatching();
+    sunShaderProgram.compile(); sunShaderProgram.link(); sunShaderProgram.autocatching();
 
-    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); 
-    ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram);
+    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view", "sunLightPos"]); 
+    ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram); ubo.attachProgram(sunShaderProgram);
     gl.clearColor( 1.0, 0.5, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     
 
@@ -132,14 +231,19 @@ void main(){
     gl.bindVertexArray(null);
     
    // VECTORS OF LOOKAT MATRIX
-   
-    var cameraPos   = new Float32Array([0.0, 80.0, 0.0]);
-    var cameraFront = new Float32Array([0.0, 0.0, 0.0]);
-    var cameraUp    = new Float32Array([0.0, 1.0, 0.0]);
-    var yaw = 0.0; var pitch = -90.0; 
+    var initialCamPos   = new Float32Array([0.0, 0.0, 100.0]);
+    var initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
+    var initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
 
-    const timeAccel = 200;
-    const astronomicUnit = 30;
+    var cameraPos   = initialCamPos  ;
+    var cameraFront = initialCamFront;
+    var cameraUp    = initialCamUp   ;
+    // ROTATION OF CAMERA
+
+    // DATA
+    const timeAccel = 2000000; // 2 000 000
+    const sec2day = 1 / (3600 * 24);
+    const astronomicUnit = 20;
     const moonDistance = 4;
     const sunPos = vec3.create();
     const earthPos = vec3.create();
@@ -181,7 +285,7 @@ void main(){
                 SOURCES.EARTH[skey].id = gl.createTexture();
                 let texture = new Image();
                 texture.onload = textureCallback;
-                texture.src
+                texture.src = sval;
             }
         }
         else{
@@ -195,9 +299,9 @@ void main(){
         
     }
 
-    // --------------------------------------------------------------------
-    // ------------------------{ RENDER FUNC }-----------------------------
-    // --------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------{ RENDER FUNC }------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------------------------
     function renderFunc( time )
     {
         gl.viewport(0, 0, 1024 , 1024);
@@ -205,7 +309,7 @@ void main(){
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
-        time *= timeAccel * 0.001; // to seconds
+        time *= timeAccel * 0.001 * sec2day; // to seconds
 
     	
         // ----{ CAMERA MATRICES }----
@@ -233,12 +337,12 @@ void main(){
         let view = mat4.create();
         mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
 
-     
-        shaderProgram.bind( );
-
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
+        ubo.uploadData("sunLightPos", sunPos);
         ubo.uploadAll( );
+     
+        
 
         // PLANETS
         let modelSun = mat4.create();
@@ -257,13 +361,13 @@ void main(){
         mat4.translate(modelSun, modelSun, sunPos);
         // PLANETS
         let models = [modelMercury, modelVenus, modelMars, modelJupiter, modelSaturn, modelUranus, modelNeptune];
-        let years = [88.0, 224.7, 4332.0, 29.5 * 365.0, 84.0 * 365.0, 165.0 * 365.0];
-        let days = [59.0, -243.0, 1, 10.0/24.0, 10.3 / 24.0, 17.0/24, 16.0/24.0];
-        let distances = [0.38, 0.72, 1.52 , 5.21,  9.54, 19.18, 30.11];
+        let years =     [88.0, 224.7, 668.599, 29.5 * 365.0, 84.0 * 365.0, 165.0 * 365.0];
+        let days =      [59.0,-243.0,       1,    10.0/24.0,  10.3 / 24.0, 17.0/24, 16.0/24.0];
+        let distances = [0.38,  0.72,   1.52 ,         5.21,         9.54,  19.18, 30.11];
         for(let i = 0; i < 7; i ++) {
             const planetTime = time / years[i];
             const relativePlanetPos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)])
-                .map(x => x * 1 * distances[i] * astronomicUnit);
+                .map(x => x * distances[i] * astronomicUnit);
 
             mat4.translate(models[i], models[i], relativePlanetPos);
             mat4.multiply(models[i], models[i], modelSun);
@@ -278,7 +382,6 @@ void main(){
         // setting its position with the sun 
         mat4.translate(modelEarth, modelEarth, relativeEarthPos);
         mat4.multiply(modelEarth, modelEarth, modelSun);
-        mat4.scale(modelEarthAtm, modelEarth,[1.1, 1.1, 1.1]);
         //Making rotation of the earth
         mat4.rotate(modelEarth, modelEarth, Math.radians(time), new Float32Array([0.0 ,1.0, 0.0]));
         //Making rotation of the atmosphere
@@ -301,22 +404,26 @@ void main(){
         //SCALES
         mat4.scale(modelSun, modelSun, [5, 5, 5]);
         mat4.scale(modelEarth, modelEarth,[2, 2, 2]);
+        mat4.scale(modelEarthAtm, modelEarth,[1.1, 1.1, 1.1]);
         mat4.scale(modelMoon, modelMoon,[0.8, 0.8, 0.8]);
 
-        //DRAW PLANETS
+        //DRAW PLANETS & MOON
+        shaderProgram.bind( );
         gl.bindVertexArray(VAO);
-        shaderProgram.setUniformMat4("model", modelSun);
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        shaderProgram.setUniformMat4("model", modelMoon);
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        for(let i = 0; i < 7; i ++) {
-            shaderProgram.setUniformMat4("model", models[i]);
+        shaderProgram.setUniform3f("cameraPos", ...cameraPos);
+
+        const allModels = [modelMercury, modelVenus, modelMars, modelJupiter, modelSaturn, modelUranus, modelNeptune, modelMoon];
+
+        for(let i = 0; i < allModels.length; i ++) {
+            shaderProgram.setUniformMat4("model", allModels[i]);
             gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
         }
 
         //DRAW EARTH
         earthShaderProgram.bind();
+        shaderProgram.setUniform3f("cameraPos", ...cameraPos);
         earthShaderProgram.setUniformMat4("model", modelEarth);
+        /*
         earthShaderProgram.setUniform1i( "uTexture", 0);
         earthShaderProgram.setUniform1i( "diffuseTexture", 1);
         earthShaderProgram.setUniform1i( "specularTexture", 2);
@@ -327,38 +434,21 @@ void main(){
         gl.activeTexture(gl.TEXTURE1);
         gl.activeTexture(gl.TEXTURE2);
         gl.activeTexture(gl.TEXTURE3);
+        */
         
-        
-
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
         earthShaderProgram.setUniformMat4("model", modelEarthAtm);
+        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+
+        // DRAW SUN
+        sunShaderProgram.bind();
+        sunShaderProgram.setUniformMat4("model", modelSun);
         gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
 
 
         gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
     }
-
-    document.addEventListener('keydown', function(event) {
-        /*
-            65 => A
-            68 => D
-            83 => S
-            87 => W
-            81 => Q
-            69 => E
-
-            37 => Flecha izq
-            39 => Fecha drcha
-            38 => Fecha arriba
-            40 => Fecha abajo
-
-        */
-        if( event.keyCode == 81 ) // Q
-        {
-        }
-        
-    } );
 
     function resizeCanvas()
     {
