@@ -133,7 +133,7 @@ void main(){
     
    // VECTORS OF LOOKAT MATRIX
    
-    var cameraPos   = new Float32Array([0.0, 80.0, 0.0]);
+    var cameraPos   = new Float32Array([0.0, 200.0, 0.0]);
     var cameraFront = new Float32Array([0.0, 0.0, 0.0]);
     var cameraUp    = new Float32Array([0.0, 1.0, 0.0]);
     var yaw = 0.0; var pitch = -90.0; 
@@ -143,14 +143,10 @@ void main(){
     const moonDistance = 4;
     const earthPos = vec3.create();
     const moonPos =  vec3.create();
-    const earthYearDuration = 365.0; // in earth days
-    const moonYearDuration = 28.0; // in earth days
-    const earthDayNumber = 365.0; // days in one year
-
 
     let celBodies = {
         sun: {
-            scale: 1,
+            scale: 5,
             program: shaderProgram,
             textures: {diffuse: {file: "sun.png"},},
             sphereShape: true,
@@ -171,20 +167,20 @@ void main(){
         },earth: {
             orbitT: 365.0, orbitR: 1.0,
             dayLength: 1.0,
-            scale: 1.1,
+            scale: 2.0,
             program: earthShaderProgram,
             textures: {diffuse:{file: "earth_diffuse.jpg"}, normal: {file: "earth_normal.jpg"}, specular: {file: "earth_specular.jpg"},},
             sphereShape: true,
         },earthAtm: {
             orbitT: 365.0, orbitR: 1.0,
             dayLength: 2.0,
-            scale: 1,
+            scale: 2.02,
             program: shaderProgram,
             textures: {diffuse: {file: "earth_clouds.png"},},
             sphereShape: true
         },moon: {//NOT an orbit around the sun, manage special case in for-loops!
-            orbitT: 28.0, orbitR: 4.0,
-            scale: 1,
+            orbitT: 28.0, orbitR: 3.2,
+            scale: 0.2,
             orbitedBody: "earth",
             lookAt: true,
             program: shaderProgram,
@@ -240,9 +236,8 @@ void main(){
     };   
 
     for(let [name, dict] of Object.entries(celBodies)) {
-        dict.model = mat4.create();
+        
         dict.scale = new Float32Array([dict.scale, dict.scale, dict.scale]);
-        dict.pos = vec3.create();
 
         if (name != "sun" && ! dict.hasOwnProperty("orbitedBody")) 
             dict.orbitedBody = "sun";
@@ -299,17 +294,21 @@ void main(){
         ubo.uploadAll( );
 
         gl.bindVertexArray(VAO);
-        for(const [name, dict] of Object.entries(celBodies)) {
+        for(let [name, dict] of Object.entries(celBodies)) {
 
+            dict.model = mat4.create();
             mat4.scale(dict.model, dict.model, dict.scale)
+            
+            dict.pos = vec3.create();
+            
 
             if(dict.hasOwnProperty('orbitR')){ 
                 const planetTime = time / dict.orbitT;
-                const relativePos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)]).map(x => x * dict.orbitR * AU);
+                const orbitRelativePos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)]).map(x => x * dict.orbitR * AU);
+                vec3.add(dict.pos, orbitRelativePos, celBodies[dict.orbitedBody].pos);
 
-                mat4.translate(dict.model, dict.model, relativePos);
+                mat4.translate(dict.model, dict.model, dict.pos);
                 mat4.multiply(dict.model, dict.model, celBodies[dict.orbitedBody].model);
-                vec3.add(dict.pos, relativePos, celBodies[dict.orbitedBody].pos);
 
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt){
                     let direction = vec3.create();
