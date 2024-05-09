@@ -165,21 +165,20 @@ void main(){
             textures: {diffuseTex: {file: "venus."},},
             sphereShape: true,
         },earth: {
-            orbitT: 365.0, orbitR: 1.0,
+            orbitT: 365.25, orbitR: 1.0,
             dayLength: 1.0,
             scale: 2.0,
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
         },earthAtm: {
-            orbitT: 365.0, orbitR: 1.0,
+            orbitT: 365.25, orbitR: 1.0,
             dayLength: 2.0,
-            scale: 2.02,
             program: shaderProgram,
             textures: {diffuseTex: {file: "earth_clouds.png"},},
             sphereShape: true
         },moon: {//NOT an orbit around the sun, manage special case in for-loops!
-            orbitT: 28.0, orbitR: 3.2,
+            orbitT: 28.0, orbitR: 0.2,
             scale: 0.2,
             orbitedBody: "earth",
             lookAt: true,
@@ -223,6 +222,7 @@ void main(){
             sphereShape: true,
         },
     }
+    celBodies.earthAtm.scale = celBodies.earth.scale*1.01
 
     const createImgOnLoadCallback = function(img, texId){
         return function(){
@@ -295,7 +295,6 @@ void main(){
 
         gl.bindVertexArray(VAO);
         for(let [name, dict] of Object.entries(celBodies)) {
-
             dict.model = mat4.create();
             mat4.scale(dict.model, dict.model, dict.scale)
 
