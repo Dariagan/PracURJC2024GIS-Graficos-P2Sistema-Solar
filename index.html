@@ -58,7 +58,7 @@ uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 
 void main(){
-    fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
+    fragColor = vec4(/*texture(diffuseTex, vTexCoord).rgb*/1.0,1.0,1.0, 1.0);
 }
 </script>
 
@@ -296,7 +296,6 @@ void main(){
         gl.bindVertexArray(VAO);
         for(let [name, dict] of Object.entries(celBodies)) {
             dict.model = mat4.create();
-            mat4.scale(dict.model, dict.model, dict.scale)
 
             dict.pos = vec3.create();
             
@@ -306,8 +305,7 @@ void main(){
                 vec3.add(dict.pos, orbitRelativePos, celBodies[dict.orbitedBody].pos);
 
                 mat4.translate(dict.model, dict.model, dict.pos);
-                mat4.multiply(dict.model, dict.model, celBodies[dict.orbitedBody].model);
-
+                
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt){
                     let direction = vec3.create();
                     vec3.subtract(direction, celBodies[dict.orbitedBody].pos, dict.pos);
@@ -320,6 +318,8 @@ void main(){
                 }
             }
             else mat4.translate(dict.model, dict.model, dict.pos);
+
+            mat4.scale(dict.model, dict.model, dict.scale)
 
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
