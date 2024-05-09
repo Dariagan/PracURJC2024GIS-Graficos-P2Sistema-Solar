@@ -139,58 +139,123 @@ void main(){
     var yaw = 0.0; var pitch = -90.0; 
 
     const timeAccel = 200;
-    const astronomicUnit = 30;
+    const AU = 30;
     const moonDistance = 4;
-    const sunPos = vec3.create();
     const earthPos = vec3.create();
     const moonPos =  vec3.create();
     const earthYearDuration = 365.0; // in earth days
     const moonYearDuration = 28.0; // in earth days
     const earthDayNumber = 365.0; // days in one year
 
-    const PLANET_TEXTURE = "planetTexture"
-    const FOLDER = "resources/"
-    const TEXTURES = {
-        EARTH: {
-            CLOUDS: {SRC: FOLDER + "earth_clouds.png", UV_NAME: "cloudsTexture"},
-            DIFFUSE: {SRC: FOLDER + "earth_diffuse.jpg", UV_NAME: "diffuseTexture"},
-            NORMAL: {SRC: FOLDER + "earth_normal.jpg", UV_NAME: "normalTexture"},
-            SPECULAR: {SRC: FOLDER + "earth_specular.jpg", UV_NAME: "specularTexture"},
+    let celBodies = {
+        sun: {
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "sun.png"},},
+            sphereShape: true,
+        },mercury: {
+            orbitT: 88.0, orbitR: 0.38, 
+            dayLength: 59.0,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "mercury."},},
+            sphereShape: true,
+        },venus: {
+            orbitT: 224.7, orbitR: 0.72,
+            dayLength: 243.0,//había un menos en el valor original, no sé si está bien
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "venus."},},
+            sphereShape: true,
+        },earth: {
+            orbitT: 365.0, orbitR: 1.0,
+            dayLength: 1.0,
+            scale: 1,
+            program: earthShaderProgram,
+            textures: {diffuse:{file: "earth_diffuse.jpg"}, normal: {file: "earth_normal.jpg"}, specular: {file: "earth_specular.jpg"},},
+            sphereShape: true,
+        },earthAtm: {
+            orbitT: 365.0, orbitR: 1.0,
+            dayLength: 2.0,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "earth_clouds.png"},},
+            sphereShape: true
+        },moon: {//NOT an orbit around the sun, manage special case in for-loops!
+            orbitT: 28.0, orbitR: 4.0,
+            scale: 1,
+            orbitedBody: "earth",
+            lookAt: true,
+            program: shaderProgram,
+            textures: {diffuse: {file: "moon.png"},},
+            sphereShape: true,
+        },mars: {
+            orbitT: 687, orbitR: 1.52,
+            dayLength: 1.026,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "mars."},},
+            sphereShape: true,
+        },jupiter: {
+            orbitT: 4331, orbitR: 5.21,
+            dayLength: 0.42,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "jupiter.png"},},
+            sphereShape: true,
+        },saturn: {
+            orbitT: 10756, orbitR: 9.54,
+            dayLength: 0.446,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "saturn.png"},},
+            sphereShape: true,
+        },uranus: {
+            orbitT: 30678, orbitR: 19.18,
+            dayLength: 0.7183,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "uranus."},},
+            sphereShape: true,
+        },neptune: {
+            orbitT: 60190, orbitR: 30.11,
+            dayLength: 0.67,
+            scale: 1,
+            program: shaderProgram,
+            textures: {diffuse: {file: "neptune."},},
+            sphereShape: true,
+            //sphere: true
         },
-        MOON: {SRC: FOLDER + "moon.png", UV_NAME: PLANET_TEXTURE},
-        SUN: {SRC: FOLDER + "sun.png", UV_NAME: PLANET_TEXTURE},
-        JUPITER: {SRC: FOLDER + "jupiter.png", UV_NAME: PLANET_TEXTURE},
-        SATURN: {SRC: FOLDER + "saturn.png", UV_NAME: PLANET_TEXTURE},
     }
-    
-    let texturesIds = new Array(Object.values(TEXTURES).length);
-      
-    const textureCallback = function(tex, texId){
+
+    const createImgOnLoadCallback = function(img, texId){
         return function(){
             gl.bindTexture(gl.TEXTURE_2D, texId);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tex);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
             gl.generateMipmap(gl.TEXTURE_2D);
             gl.bindTexture(gl.TEXTURE_2D, null);
         }
-    };    
+    };   
 
-    for(const [key, val] of Object.entries(TEXTURES)){
-        if (key === "EARTH"){
-            for(const [skey, sval] of Object.entries(TEXTURES.EARTH)){
-                sval.id = gl.createTexture();
-                let texture = new Image();
-                texture.onload = textureCallback(texture, sval.id);
-                texture.src = sval.SRC;
-            }
-        }else{
-            val.id = gl.createTexture();
-            let texture = new Image();
-            texture.onload = textureCallback(texture, val.id);
-            texture.src = val.SRC;
+    for(let [name, dict] of Object.entries(celBodies)) {
+        dict.model = mat4.create();
+        dict.scale = new Float32Array([dict.scale, dict.scale, dict.scale]);
+        dict.pos = vec3.create();
+
+        if (name != "sun" && ! dict.hasOwnProperty("orbitedBody")) 
+            dict.orbitedBody = "sun";
+        
+        for(let [uvName, texDict] of Object.entries(dict.textures)){
+            texDict.id = gl.createTexture();
+            let img = new Image();
+            img.onload = createImgOnLoadCallback(img, texDict.id);
+            img.src = texDict.file;
         }        
+    
     }
+    const FOLDER = "resources/"
 
     // --------------------------------------------------------------------
     // ------------------------{ RENDER FUNC }-----------------------------
@@ -235,115 +300,54 @@ void main(){
         ubo.uploadData("view", view);
         ubo.uploadAll( );
 
-        // PLANETS
-        let modelSun = mat4.create();
-        let modelMercury = mat4.create();
-        let modelVenus = mat4.create();
-        let modelEarth = mat4.create();
-        let modelEarthAtm = mat4.create();
-        let modelMoon = mat4.create();
-        let modelMars = mat4.create();
-        let modelJupiter = mat4.create();
-        let modelSaturn = mat4.create();
-        let modelUranus = mat4.create();
-        let modelNeptune = mat4.create();
-
-        //SUN
-        mat4.translate(modelSun, modelSun, sunPos);
-        // PLANETS
-        let models = [modelMercury, modelVenus, modelMars, modelJupiter, modelSaturn, modelUranus, modelNeptune];
-        let years = [88.0, 224.7, 4332.0, 29.5 * 365.0, 84.0 * 365.0, 165.0 * 365.0];
-        let days = [59.0, -243.0, 1, 10.0/24.0, 10.3 / 24.0, 17.0/24, 16.0/24.0];
-        let distances = [0.38, 0.72, 1.52 , 5.21,  9.54, 19.18, 30.11];
-        for(let i = 0; i < 7; i ++) {
-            const planetTime = time / years[i];
-            const relativePlanetPos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)])
-                .map(x => x * 1 * distances[i] * astronomicUnit);
-
-            mat4.translate(models[i], models[i], relativePlanetPos);
-            mat4.multiply(models[i], models[i], modelSun);
-            mat4.rotate(models[i], models[i], Math.radians(planetTime * days[i]), new Float32Array([0.0 ,1.0, 0.0]));
-
-        }
-        //EARTH
-        // setting its relative position
-        const earthTime = time / earthYearDuration;
-        const relativeEarthPos = new Float32Array([Math.cos(earthTime), 0.0, Math.sin(earthTime)])
-            .map(x => x * 1 * astronomicUnit);
-        // setting its position with the sun 
-        mat4.translate(modelEarth, modelEarth, relativeEarthPos);
-        mat4.multiply(modelEarth, modelEarth, modelSun);
-        mat4.scale(modelEarthAtm, modelEarth,[1.1, 1.1, 1.1]);
-        //Making rotation of the earth
-        mat4.rotate(modelEarth, modelEarth, Math.radians(time), new Float32Array([0.0 ,1.0, 0.0]));
-        //Making rotation of the atmosphere
-        mat4.rotate(modelEarthAtm, modelEarthAtm, Math.radians(time * 0.5), new Float32Array([0.0 ,1.0, 0.0]));
-
-        //MOON
-        const moonTime = time / 28;
-        const relativeMoonPos = new Float32Array([Math.cos(moonTime), 0.0, Math.sin(moonTime)])
-            .map(x => x * moonDistance);
-        vec3.add(moonPos, earthPos, relativeMoonPos);
-        mat4.translate(modelMoon, modelMoon, relativeMoonPos);
-        mat4.multiply(modelMoon, modelMoon, modelEarth);
-        //the moon always looks at the earth
-        var moonDirection = vec3.create();
-        vec3.subtract(moonDirection, earthPos, moonPos);
-        vec3.normalize(moonDirection, moonDirection);
-        const moonAngle = vec3.dot(moonDirection, [1.0, 0.0, 0.0]);
-        mat4.rotate(modelMoon, modelMoon, Math.radians(moonAngle), [0.0 ,1.0, 0.0]);
-        
-        //SCALES
-        mat4.scale(modelSun, modelSun, [5, 5, 5]);
-        mat4.scale(modelEarth, modelEarth,[2, 2, 2]);
-        mat4.scale(modelMoon, modelMoon,[0.8, 0.8, 0.8]);
-
-        
-        //DRAW PLANETS
         gl.bindVertexArray(VAO);
-        shaderProgram.setUniformMat4("model", modelSun);
-        // let i = 0;
-        // for(const [key, val] of Object.entries(TEXTURES)){
-        //     if(key == "EARTH") continue;
+        for(const [name, dict] of Object.entries(celBodies)) {
 
-        //     gl.activeTexture(gl.TEXTURE0 + i);
-        //     shaderProgram.setUniform1i( PLANET_TEXTURE, i);
-        //     gl.bindTexture( gl.TEXTURE_2D, val.id);
-        //     i++
-        // }
+            mat4.scale(dict.model, dict.scale)
 
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        shaderProgram.setUniformMat4("model", modelMoon);
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        for(let i = 0; i < mo; i ++) {
-            shaderProgram.setUniformMat4("model", models[i]);
+            if(dict.hasOwnProperty('orbitR')){ 
+                const planetTime = time / dict.orbitT;
+                const relativePos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)]).map(x => x * dict.orbitR * AU);
 
-            //PARA CADA PLANETA, ACTIBAR SUS TEXTURAS PARTIENDO DE 0, DESP DIBUJAR
+                mat4.translate(dict.model, dict.model, relativePos);
+                mat4.multiply(dict.model, dict.model, celBodies[dict.orbitedBody].model);
+                vec3.add(dict.pos, relativePos, celBodies[dict.orbitedBody].pos);
 
-            gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+                if (dict.hasOwnProperty('lookAt') && dict.lookAt){
+                    let direction = vec3.create();
+                    vec3.subtract(direction, celBodies[dict.orbitedBody].pos, dict.pos);
+                    vec3.normalize(direction, direction);
+                    const angle = vec3.dot(direction, [1.0, 0.0, 0.0]);
+                    mat4.rotate(dict.model, dict.model, Math.radians(angle), [0.0, 1.0, 0.0])
+                }
+                else{
+                    mat4.rotate(dict.model, dict.model, Math.radians(planetTime * dict.dayLength), new Float32Array([0.0, 1.0, 0.0]));
+                }
+            }
+            else mat4.translate(dict.model, dict.model, dict.pos);
+
+            dict.program.bind();
+            dict.program.setUniformMat4("model", dict.model);
+
+
+            let i = 0;
+            for(const [uvName, texDict] of Object.entries(dict.textures)){
+                gl.activeTexture(gl.TEXTURE0 + i);
+                earthShaderProgram.setUniform1i( uvName, i);
+                gl.bindTexture( gl.TEXTURE_2D, texDict.id);
+                i++
+            }
+
+            if(sphereShape)
+                gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
+            else
+                gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
         }
-
-        //DRAW EARTH
-        earthShaderProgram.bind();
-        
-        let i = 0
-        earthShaderProgram.setUniformMat4("model", modelEarth);
-        for(const [key, val] of Object.entries(TEXTURES.EARTH)){
-            gl.activeTexture(gl.TEXTURE0 + i);
-            earthShaderProgram.setUniform1i( val.UV_NAME, i);
-            gl.bindTexture( gl.TEXTURE_2D, val.id);
-            i++
-        }
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-        earthShaderProgram.setUniformMat4("model", modelEarthAtm);
-        gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-
-
         gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
     }
 
-    document.addEventListener('keydown', function(event) {
+    document.addEventListener('namedown', function(event) {
         /*
             65 => A
             68 => D
@@ -358,7 +362,7 @@ void main(){
             40 => Fecha abajo
 
         */
-        if( event.keyCode == 81 ) // Q
+        if( event.nameCode == 81 ) // Q
         {
         }
         
