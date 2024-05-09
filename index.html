@@ -113,7 +113,7 @@ void main( )
     uniform sampler2D diffuseTex;
     
     void main(){
-        fragColor = vec4(vTexCoord, 1.0 ,1.0);
+        fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
     }
 </script>
 
@@ -164,8 +164,7 @@ void main( )
         vec3 reflectDir = reflect(lightDir, norm);
         vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
         
-        //fragColor = vec4((ambient + specular + diffuse) * texture(diffuseTex, vTexCoord).rgb, 1.0);
-        fragColor = vec4(vTexCoord, 1.0, 0.0);
+        fragColor = vec4((ambient + specular + diffuse) * texture(diffuseTex, vTexCoord).rgb, 1.0);
     }
     </script>
 
@@ -216,7 +215,7 @@ void main( )
     gl.enableVertexAttribArray(1);
     // texCoord attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereUvs);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.uvs), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(2);
     // index attribute
@@ -251,7 +250,7 @@ void main( )
             program: sunShaderProgram,
             textures: {diffuseTex: {file: "sun.png"},},
             sphereShape: true,
-        } ,mercury: {
+        },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             dayLength: 59.0,
             scale: 1,
@@ -397,6 +396,7 @@ void main( )
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
         ubo.uploadData("sunLightPos", sunPos);
+        ubo.uploadAll( );
 
 
         gl.bindVertexArray(VAO);
@@ -440,12 +440,17 @@ void main( )
                 i++
             }
 
-            if(dict.sphereShape)
+            if(dict.sphereShape) {
+                gl.bindVertexArray(VAO);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
                 gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
-            else
+            }
+            else {
+                gl.bindVertexArray(VAORing);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
+            }
         }
-        ubo.uploadAll( );
 
         gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
