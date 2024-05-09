@@ -58,7 +58,7 @@ uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 
 void main(){
-    fragColor = vec4(/*texture(diffuseTex, vTexCoord).rgb*/1.0,1.0,1.0, 1.0);
+    fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
 }
 </script>
 
@@ -74,7 +74,7 @@ void main(){
     uniform sampler2D diffuseTex;
     
     void main(){
-        fragColor = vec4(1.0,1.0,1.0,1.0);
+        fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
     }
     </script>
 
@@ -150,7 +150,7 @@ void main(){
             program: shaderProgram,
             textures: {diffuseTex: {file: "sun.png"},},
             sphereShape: true,
-        },mercury: {
+        } ,mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             dayLength: 59.0,
             scale: 1,
@@ -220,9 +220,9 @@ void main(){
             program: shaderProgram,
             textures: {diffuseTex: {file: "neptune."},},
             sphereShape: true,
-        },
+        }, 
     }
-    celBodies.earthAtm.scale = celBodies.earth.scale*1.01
+    //celBodies.earthAtm.scale = celBodies.earth.scale*1.01
 
     const createImgOnLoadCallback = function(img, texId){
         return function(){
@@ -258,7 +258,7 @@ void main(){
     function renderFunc( time )
     {
         gl.viewport(0, 0, 1024 , 1024);
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        //gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
@@ -292,6 +292,7 @@ void main(){
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
         ubo.uploadAll( );
+
 
         gl.bindVertexArray(VAO);
         for(let [name, dict] of Object.entries(celBodies)) {
