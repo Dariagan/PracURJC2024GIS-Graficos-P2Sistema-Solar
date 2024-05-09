@@ -97,7 +97,7 @@ void main( )
         vec3 reflectDir = reflect(lightDir, norm);
         vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
         
-        fragColor = vec4((ambient + specular + diffuse) * objectColor * texture(diffuseTex, vTexCoord).rgb, 1.0);
+        fragColor = vec4((ambient + specular + diffuse), 1.0) * texture(diffuseTex, vTexCoord).rgba;
 
     }
 </script>
@@ -113,7 +113,7 @@ void main( )
     uniform sampler2D diffuseTex;
     
     void main(){
-        fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
+        fragColor = texture(diffuseTex, vTexCoord).rgba;
     }
 </script>
 
@@ -163,8 +163,13 @@ void main( )
         vec3 viewDir = normalize(fragPos - cameraPos );
         vec3 reflectDir = reflect(lightDir, norm);
         vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+
+        vec4 texColor = texture(diffuseTex, vTexCoord);
+
+        if (texColor.a < 0.7)
+            discard;
         
-        fragColor = vec4((ambient + specular + diffuse) * texture(diffuseTex, vTexCoord).rgb, 1.0);
+        fragColor = vec4((ambient + specular + diffuse), 1.0) * texColor;
     }
     </script>
 
@@ -239,7 +244,7 @@ void main( )
     // ROTATION OF CAMERA
 
     // DATA
-    const timeAccel = 2000000; // 2 000 000
+    const timeAccel = 1000000; // 2 000 000
     const sec2day = 1 / (3600 * 24);
     const AU = 20;
     var sunPos = new Float32Array([0.0, 0.0, 0.0]);
@@ -271,12 +276,6 @@ void main( )
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
-        },earthAtm: {
-            orbitT: 365.25, orbitR: 1.0,
-            dayLength: 2.0,
-            program: shaderProgram,
-            textures: {diffuseTex: {file: "earth_clouds.png"},},
-            sphereShape: true
         },moon: {//NOT an orbit around the sun, manage special case in for-loops!
             orbitT: 28.0, orbitR: 0.2,
             scale: 0.2,
@@ -320,8 +319,16 @@ void main( )
             program: shaderProgram,
             textures: {diffuseTex: {file: "neptune."},},
             sphereShape: true,
-        }, 
+        }, earthAtm: {
+            dayLength: 1.01,
+            program: shaderProgram,
+            textures: {diffuseTex: {file: "earth_clouds.png"},},
+            sphereShape: true,
+            transparent: true
+        },
     }
+    celBodies.earthAtm.orbitR = celBodies.earth.orbitR;
+    celBodies.earthAtm.orbitT = celBodies.earth.orbitT
     celBodies.earthAtm.scale = celBodies.earth.scale*1.01
 
     const createImgOnLoadCallback = function(img, texId){
@@ -388,9 +395,6 @@ void main( )
         
         let view = mat4.create();
         mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
-
-
-        
      
         
         ubo.uploadData("projection", proj);
@@ -440,6 +444,11 @@ void main( )
                 i++
             }
 
+            if (dict.hasOwnProperty('transparent')){
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+            }
+
             if(dict.sphereShape) {
                 gl.bindVertexArray(VAO);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
@@ -449,6 +458,10 @@ void main( )
                 gl.bindVertexArray(VAORing);
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
+            }
+
+            if (dict.hasOwnProperty('transparent')){
+                gl.disable(gl.BLEND);
             }
         }
 
