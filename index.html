@@ -52,13 +52,13 @@ in vec2 vTexCoord;
 
 out vec4 fragColor;
 
-uniform sampler2D cloudsTexture;
-uniform sampler2D diffuseTexture;
-uniform sampler2D normalTexture;
-uniform sampler2D specularTexture;
+uniform sampler2D cloudsTex;
+uniform sampler2D diffuseTex;
+uniform sampler2D normalTex;
+uniform sampler2D specularTex;
 
 void main(){
-    fragColor = vec4(texture(diffuseTexture, vTexCoord).rgb, 1.0);
+    fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
 }
 </script>
 
@@ -71,7 +71,7 @@ void main(){
     
     out vec4 fragColor;
     
-    uniform sampler2D planetTexture;
+    uniform sampler2D diffuseTex;
     
     void main(){
         fragColor = vec4(1.0,1.0,1.0,1.0);
@@ -148,35 +148,35 @@ void main(){
         sun: {
             scale: 5,
             program: shaderProgram,
-            textures: {diffuse: {file: "sun.png"},},
+            textures: {diffuseTex: {file: "sun.png"},},
             sphereShape: true,
         },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             dayLength: 59.0,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "mercury."},},
+            textures: {diffuseTex: {file: "mercury."},},
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
-            dayLength: 243.0,//había un menos en el valor original, no sé si está bien
+            dayLength: -243.0,//había un menos en el valor original, no sé si está bien
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "venus."},},
+            textures: {diffuseTex: {file: "venus."},},
             sphereShape: true,
         },earth: {
             orbitT: 365.0, orbitR: 1.0,
             dayLength: 1.0,
             scale: 2.0,
             program: earthShaderProgram,
-            textures: {diffuse:{file: "earth_diffuse.jpg"}, normal: {file: "earth_normal.jpg"}, specular: {file: "earth_specular.jpg"},},
+            textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
         },earthAtm: {
             orbitT: 365.0, orbitR: 1.0,
             dayLength: 2.0,
             scale: 2.02,
             program: shaderProgram,
-            textures: {diffuse: {file: "earth_clouds.png"},},
+            textures: {diffuseTex: {file: "earth_clouds.png"},},
             sphereShape: true
         },moon: {//NOT an orbit around the sun, manage special case in for-loops!
             orbitT: 28.0, orbitR: 3.2,
@@ -184,42 +184,42 @@ void main(){
             orbitedBody: "earth",
             lookAt: true,
             program: shaderProgram,
-            textures: {diffuse: {file: "moon.png"},},
+            textures: {diffuseTex: {file: "moon.png"},},
             sphereShape: true,
         },mars: {
             orbitT: 687, orbitR: 1.52,
             dayLength: 1.026,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "mars."},},
+            textures: {diffuseTex: {file: "mars."},},
             sphereShape: true,
         },jupiter: {
             orbitT: 4331, orbitR: 5.21,
             dayLength: 0.42,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "jupiter.png"},},
+            textures: {diffuseTex: {file: "jupiter.png"},},
             sphereShape: true,
         },saturn: {
             orbitT: 10756, orbitR: 9.54,
             dayLength: 0.446,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "saturn.png"},},
+            textures: {diffuseTex: {file: "saturn.png"},},
             sphereShape: true,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
             dayLength: 0.7183,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "uranus."},},
+            textures: {diffuseTex: {file: "uranus."},},
             sphereShape: true,
         },neptune: {
             orbitT: 60190, orbitR: 30.11,
             dayLength: 0.67,
             scale: 1,
             program: shaderProgram,
-            textures: {diffuse: {file: "neptune."},},
+            textures: {diffuseTex: {file: "neptune."},},
             sphereShape: true,
         },
     }
@@ -298,10 +298,9 @@ void main(){
 
             dict.model = mat4.create();
             mat4.scale(dict.model, dict.model, dict.scale)
-            
+
             dict.pos = vec3.create();
             
-
             if(dict.hasOwnProperty('orbitR')){ 
                 const planetTime = time / dict.orbitT;
                 const orbitRelativePos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)]).map(x => x * dict.orbitR * AU);
@@ -326,13 +325,13 @@ void main(){
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
 
-            // let i = 0;
-            // for(const [uvName, texDict] of Object.entries(dict.textures)){
-            //     gl.activeTexture(gl.TEXTURE0 + i);
-            //     earthShaderProgram.setUniform1i(uvName, i);
-            //     gl.bindTexture(gl.TEXTURE_2D, texDict.id);
-            //     i++
-            // }
+            let i = 0;
+            for(const [uvName, texDict] of Object.entries(dict.textures)){
+                gl.activeTexture(gl.TEXTURE0 + i);
+                dict.program.setUniform1i(uvName, i);
+                gl.bindTexture(gl.TEXTURE_2D, texDict.id);
+                i++
+            }
 
             if(dict.sphereShape)
                 gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
