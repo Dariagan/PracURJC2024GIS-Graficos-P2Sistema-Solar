@@ -26,6 +26,7 @@ uniform mat4 model;
 uniform UBO {
     mat4 projection;
     mat4 view;
+    vec3 sunLightPos;
 };  
 
 out vec3 normal;
@@ -44,22 +45,76 @@ void main( )
 </script>
 
 <script id="earth-shader-fs" type="x-shader/x-fragment">#version 300 es
-precision mediump float;
+    precision mediump float;
+    
+    in vec3 normal;
+    in vec3 fragPos;
+    in vec2 vTexCoord;
+    
+   
+    out vec4 fragColor;
+    uniform vec3 cameraPos;
 
-in vec3 normal;
-in vec3 fragPos;
-in vec2 vTexCoord;
+    vec3 objectColor = vec3(0.0, 1.0, 1.0);
 
-out vec4 fragColor;
+    uniform sampler2D cloudsTex;
+    uniform sampler2D diffuseTex;
+    uniform sampler2D normalTex;
+    uniform sampler2D specularTex;
 
-uniform sampler2D cloudsTex;
-uniform sampler2D diffuseTex;
-uniform sampler2D normalTex;
-uniform sampler2D specularTex;
 
-void main(){
-    fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
-}
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambientColor = vec3(1.0, 1.0, 1.0);
+
+    // Diffuse 
+    float diffuseStrength = 0.6;
+    vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
+
+    // Specular
+    float specularStrength = 0.5;
+    float specularRadius = 32.0;
+    vec3 specularColor = vec3(1.0, 1.0, 1.0); 
+
+    uniform UBO {
+        mat4 projection;
+        mat4 view;
+        vec3 sunLightPos;
+    };  
+    
+    void main(){
+        vec3 norm = normalize(normal);
+
+        // Ambient
+        vec3 ambient = ambientStrength * ambientColor;
+
+        // Diffuse
+        vec3 lightDir = normalize(sunLightPos - fragPos);
+        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+
+        // specular
+        vec3 viewDir = normalize(fragPos - cameraPos );
+        vec3 reflectDir = reflect(lightDir, norm);
+        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+        
+        fragColor = vec4((ambient + specular + diffuse) * objectColor * texture(diffuseTex, vTexCoord).rgb, 1.0);
+
+    }
+</script>
+<script id="sun-shader-fs" type="x-shader/x-fragment">#version 300 es
+    precision mediump float;
+
+    in vec3 normal;
+    in vec3 fragPos;
+    in vec2 vTexCoord;
+    
+    out vec4 fragColor;
+    
+    uniform sampler2D diffuseTex;
+    
+    void main(){
+        fragColor = vec4(vTexCoord, 1.0 ,1.0);
+    }
 </script>
 
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
@@ -72,28 +127,69 @@ void main(){
     out vec4 fragColor;
     
     uniform sampler2D diffuseTex;
+    uniform vec3 cameraPos;
+
+    // Ambient
+    float ambientStrength = 0.1;
+    vec3 ambientColor = vec3(1.0, 1.0, 1.0);
+
+    // Diffuse 
+    float diffuseStrength = 0.6;
+    vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
+
+    // Specular
+    float specularStrength = 0.5;
+    float specularRadius = 32.0;
+    vec3 specularColor = vec3(1.0, 1.0, 1.0); 
+
+    uniform UBO {
+        mat4 projection;
+        mat4 view;
+        vec3 sunLightPos;
+    };  
     
     void main(){
-        fragColor = vec4(texture(diffuseTex, vTexCoord).rgb, 1.0);
+
+        vec3 norm = normalize(normal);
+
+        // Ambient
+        vec3 ambient = ambientStrength * ambientColor;
+
+        // Diffuse
+        vec3 lightDir = normalize(sunLightPos - fragPos);
+        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+
+        // specular
+        vec3 viewDir = normalize(fragPos - cameraPos );
+        vec3 reflectDir = reflect(lightDir, norm);
+        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+        
+        //fragColor = vec4((ambient + specular + diffuse) * texture(diffuseTex, vTexCoord).rgb, 1.0);
+        fragColor = vec4(vTexCoord, 1.0, 0.0);
     }
     </script>
 
 </head>
 <body>
 <canvas id="myCanvas" width="1024" height="1024"></canvas>
+<script type="text/javascript" src="controls.js"></script>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
     let shaderProgram = new ShaderProgram( );
     let earthShaderProgram = new ShaderProgram();
+    let sunShaderProgram = new ShaderProgram();
     shaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     shaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text);
     earthShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     earthShaderProgram.createFragmentShader(document.getElementById( "earth-shader-fs" ).text);
+    sunShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
+    sunShaderProgram.createFragmentShader(document.getElementById( "sun-shader-fs" ).text);
     shaderProgram.compile(); shaderProgram.link(); shaderProgram.autocatching();
     earthShaderProgram.compile(); earthShaderProgram.link(); earthShaderProgram.autocatching();
+    sunShaderProgram.compile(); sunShaderProgram.link(); sunShaderProgram.autocatching();
 
-    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view" ]); 
-    ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram);
+    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view", "sunLightPos"]); 
+    ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram); ubo.attachProgram(sunShaderProgram);
     gl.clearColor( 1.0, 0.5, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     
 
@@ -132,22 +228,27 @@ void main(){
     gl.bindVertexArray(null);
     
    // VECTORS OF LOOKAT MATRIX
-   
-    var cameraPos   = new Float32Array([0.0, 200.0, 0.0]);
-    var cameraFront = new Float32Array([0.0, 0.0, 0.0]);
-    var cameraUp    = new Float32Array([0.0, 1.0, 0.0]);
-    var yaw = 0.0; var pitch = -90.0; 
 
-    const timeAccel = 200;
-    const AU = 30;
-    const moonDistance = 4;
-    const earthPos = vec3.create();
-    const moonPos =  vec3.create();
+    var initialCamPos   = new Float32Array([0.0, 0.0, 200.0]);
+    var initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
+    var initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
+    var yaw = -90.0; var pitch = 0.0; 
+
+    var cameraPos   = initialCamPos  ;
+    var cameraFront = initialCamFront;
+    var cameraUp    = initialCamUp   ;
+    // ROTATION OF CAMERA
+
+    // DATA
+    const timeAccel = 2000000; // 2 000 000
+    const sec2day = 1 / (3600 * 24);
+    const AU = 20;
+    var sunPos = new Float32Array([0.0, 0.0, 0.0]);
 
     let celBodies = {
         sun: {
             scale: 5,
-            program: shaderProgram,
+            program: sunShaderProgram,
             textures: {diffuseTex: {file: "sun.png"},},
             sphereShape: true,
         } ,mercury: {
@@ -222,7 +323,7 @@ void main(){
             sphereShape: true,
         }, 
     }
-    //celBodies.earthAtm.scale = celBodies.earth.scale*1.01
+    celBodies.earthAtm.scale = celBodies.earth.scale*1.01
 
     const createImgOnLoadCallback = function(img, texId){
         return function(){
@@ -252,9 +353,9 @@ void main(){
     
     }
 
-    // --------------------------------------------------------------------
-    // ------------------------{ RENDER FUNC }-----------------------------
-    // --------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------------------------
+    // -----------------------------------------{ RENDER FUNC }------------------------------------------------------------------
+    // --------------------------------------------------------------------------------------------------------------------------
     function renderFunc( time )
     {
         gl.viewport(0, 0, 1024 , 1024);
@@ -262,7 +363,9 @@ void main(){
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
-        time *= timeAccel * 0.001; // to seconds
+
+        time *= timeAccel * 0.001 * sec2day; // to seconds
+
     	
         // ----{ CAMERA MATRICES }----
         // PROJ MATRIX
@@ -287,11 +390,13 @@ void main(){
         let view = mat4.create();
         mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
 
-        shaderProgram.bind( );
 
+        
+     
+        
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
-        ubo.uploadAll( );
+        ubo.uploadData("sunLightPos", sunPos);
 
 
         gl.bindVertexArray(VAO);
@@ -324,6 +429,8 @@ void main(){
 
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
+            dict.program.setUniform3f("cameraPos", ...cameraPos);
+
 
             let i = 0;
             for(const [uvName, texDict] of Object.entries(dict.textures)){
@@ -338,30 +445,11 @@ void main(){
             else
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
         }
+        ubo.uploadAll( );
+
         gl.bindVertexArray(null);
         requestAnimationFrame( renderFunc );
     }
-
-    document.addEventListener('namedown', function(event) {
-        /*
-            65 => A
-            68 => D
-            83 => S
-            87 => W
-            81 => Q
-            69 => E
-
-            37 => Flecha izq
-            39 => Fecha drcha
-            38 => Fecha arriba
-            40 => Fecha abajo
-
-        */
-        if( event.nameCode == 81 ) // Q
-        {
-        }
-        
-    } );
 
     function resizeCanvas()
     {
