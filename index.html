@@ -147,6 +147,7 @@ void main(){
     const moonYearDuration = 28.0; // in earth days
     const earthDayNumber = 365.0; // days in one year
 
+
     let celBodies = {
         sun: {
             scale: 1,
@@ -170,7 +171,7 @@ void main(){
         },earth: {
             orbitT: 365.0, orbitR: 1.0,
             dayLength: 1.0,
-            scale: 1,
+            scale: 1.1,
             program: earthShaderProgram,
             textures: {diffuse:{file: "earth_diffuse.jpg"}, normal: {file: "earth_normal.jpg"}, specular: {file: "earth_specular.jpg"},},
             sphereShape: true,
@@ -224,7 +225,6 @@ void main(){
             program: shaderProgram,
             textures: {diffuse: {file: "neptune."},},
             sphereShape: true,
-            //sphere: true
         },
     }
 
@@ -251,11 +251,11 @@ void main(){
             texDict.id = gl.createTexture();
             let img = new Image();
             img.onload = createImgOnLoadCallback(img, texDict.id);
-            img.src = texDict.file;
+            const FOLDER = "resources/"
+            img.src = FOLDER + texDict.file;
         }        
     
     }
-    const FOLDER = "resources/"
 
     // --------------------------------------------------------------------
     // ------------------------{ RENDER FUNC }-----------------------------
@@ -283,9 +283,7 @@ void main(){
         const sinPitch = Math.sin(pitchRadians);
         
         let direction = vec3.create();
-        direction[0] = cosYaw * cosPitch;
-        direction[1] = sinPitch;
-        direction[2] = sinYaw * cosPitch;
+        direction[0] = cosYaw * cosPitch; direction[1] = sinPitch; direction[2] = sinYaw * cosPitch;
         vec3.normalize(cameraFront, direction);
 
         let camPosFront = vec3.create();
@@ -303,7 +301,7 @@ void main(){
         gl.bindVertexArray(VAO);
         for(const [name, dict] of Object.entries(celBodies)) {
 
-            mat4.scale(dict.model, dict.scale)
+            mat4.scale(dict.model, dict.model, dict.scale)
 
             if(dict.hasOwnProperty('orbitR')){ 
                 const planetTime = time / dict.orbitT;
@@ -329,16 +327,15 @@ void main(){
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
 
+            // let i = 0;
+            // for(const [uvName, texDict] of Object.entries(dict.textures)){
+            //     gl.activeTexture(gl.TEXTURE0 + i);
+            //     earthShaderProgram.setUniform1i(uvName, i);
+            //     gl.bindTexture(gl.TEXTURE_2D, texDict.id);
+            //     i++
+            // }
 
-            let i = 0;
-            for(const [uvName, texDict] of Object.entries(dict.textures)){
-                gl.activeTexture(gl.TEXTURE0 + i);
-                earthShaderProgram.setUniform1i( uvName, i);
-                gl.bindTexture( gl.TEXTURE_2D, texDict.id);
-                i++
-            }
-
-            if(sphereShape)
+            if(dict.sphereShape)
                 gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
             else
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
