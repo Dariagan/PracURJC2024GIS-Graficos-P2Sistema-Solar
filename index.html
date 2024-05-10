@@ -256,21 +256,21 @@ void main( )
             sphereShape: true,
         },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
-            dayLength: 59.0,
+            axisRotationT: 59.0,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "mercury."},},
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
-            dayLength: 243.0,//había un menos en el valor original, no sé si está bien
+            axisRotationT: 243.0,//había un menos en el valor original, no sé si está bien
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "venus."},},
             sphereShape: true,
         },earth: {
             orbitT: 365.25, orbitR: 1.0,
-            dayLength: 1.0,
+            axisRotationT: 1.0,
             scale: 2.0,
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
@@ -285,41 +285,41 @@ void main( )
             sphereShape: true,
         },mars: {
             orbitT: 687, orbitR: 1.52,
-            dayLength: 1.026,
+            axisRotationT: 1.026,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "mars."},},
             sphereShape: true,
         },jupiter: {
             orbitT: 4331, orbitR: 5.21,
-            dayLength: 0.42,
+            axisRotationT: 0.42,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "jupiter.png"},},
             sphereShape: true,
         },saturn: {
             orbitT: 10756, orbitR: 9.54,
-            dayLength: 0.446,
+            axisRotationT: 0.446,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "saturn.png"},},
             sphereShape: true,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
-            dayLength: 0.7183,
+            axisRotationT: 0.7183,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "uranus."},},
             sphereShape: true,
         },neptune: {
             orbitT: 60190, orbitR: 30.11,
-            dayLength: 0.67,
+            axisRotationT: 0.67,
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "neptune."},},
             sphereShape: true,
         }, earthAtm: {
-            dayLength: 1.01,
+            axisRotationT: 1.01,
             program: shaderProgram,
             textures: {diffuseTex: {file: "earth_clouds.png"},},
             sphereShape: true,
@@ -428,7 +428,7 @@ void main( )
                     mat4.rotateY(dict.model, dict.model, angle);
                 }
                 else{
-                    const axisRotAngle = time*2*Math.PI/dict.dayLength;
+                    const axisRotAngle = time*2*Math.PI/dict.axisRotationT;
                     mat4.rotate(dict.model, dict.model, axisRotAngle, new Float32Array([0.0, 1.0, 0.0]));
                 }
 
