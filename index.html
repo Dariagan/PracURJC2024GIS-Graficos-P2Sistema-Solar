@@ -244,10 +244,9 @@ void main( )
     // ROTATION OF CAMERA
 
     // DATA
-    const timeAccel = 1000000; // 2 000 000
+    const timeAccel = 60000; // 2 000 000
     const sec2day = 1 / (3600 * 24);
     const AU = 20;
-    var sunPos = new Float32Array([0.0, 0.0, 0.0]);
 
     let celBodies = {
         sun: {
@@ -264,7 +263,7 @@ void main( )
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
-            dayLength: -243.0,//había un menos en el valor original, no sé si está bien
+            dayLength: 243.0,//había un menos en el valor original, no sé si está bien
             scale: 1,
             program: shaderProgram,
             textures: {diffuseTex: {file: "venus."},},
@@ -346,6 +345,8 @@ void main( )
         
         dict.scale = new Float32Array([dict.scale, dict.scale, dict.scale]);
 
+ 
+
         if (name != "sun" && ! dict.hasOwnProperty("orbitedBody")) 
             dict.orbitedBody = "sun";
         
@@ -399,22 +400,24 @@ void main( )
         
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
-        ubo.uploadData("sunLightPos", sunPos);
+        ubo.uploadData("sunLightPos", new Float32Array([0,0,0]));
         ubo.uploadAll( );
 
 
         for(let [name, dict] of Object.entries(celBodies)) {
             dict.model = mat4.create();
 
-            dict.pos = vec3.create();
+            dict.pos = vec3.create()
             
             if(dict.hasOwnProperty('orbitR')){ 
-                const planetTime = time / dict.orbitT;
-                const orbitRelativePos =  new Float32Array([Math.cos(planetTime), 0.0, Math.sin(planetTime)]).map(x => x * dict.orbitR * AU);
+                const orbitAngle = time*2*Math.PI/dict.orbitT;
+
+                const orbitRelativePos =  new Float32Array([Math.cos(orbitAngle), 0.0, Math.sin(orbitAngle)]).map(x => x * dict.orbitR * AU);
                 vec3.add(dict.pos, orbitRelativePos, celBodies[dict.orbitedBody].pos);
 
                 mat4.translate(dict.model, dict.model, dict.pos);
-                
+
+
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt){
                     let direction = vec3.create();
                     vec3.subtract(direction, celBodies[dict.orbitedBody].pos, dict.pos);
@@ -423,8 +426,10 @@ void main( )
                     mat4.rotate(dict.model, dict.model, Math.radians(angle), [0.0, 1.0, 0.0])
                 }
                 else{
-                    mat4.rotate(dict.model, dict.model, Math.radians(planetTime * dict.dayLength), new Float32Array([0.0, 1.0, 0.0]));
+                    const axisRotAngle = time*2*Math.PI/dict.dayLength;
+                    mat4.rotate(dict.model, dict.model, axisRotAngle, new Float32Array([0.0, 1.0, 0.0]));
                 }
+
             }
             else mat4.translate(dict.model, dict.model, dict.pos);
 
