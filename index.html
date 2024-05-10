@@ -233,14 +233,14 @@ void main( )
     
    // VECTORS OF LOOKAT MATRIX
 
-    var initialCamPos   = new Float32Array([0.0, 0.0, 200.0]);
-    var initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
-    var initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
+    const initialCamPos   = new Float32Array([0.0, 0.0, 200.0]);
+    const initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
+    const initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
     var yaw = -90.0; var pitch = 0.0; 
 
-    var cameraPos   = initialCamPos  ;
-    var cameraFront = initialCamFront;
-    var cameraUp    = initialCamUp   ;
+    var cameraPos   = new Float32Array(initialCamPos)  ;
+    var cameraFront = new Float32Array(initialCamFront);
+    var cameraUp    = new Float32Array(initialCamUp)   ;
     // ROTATION OF CAMERA
 
     // DATA
@@ -403,7 +403,6 @@ void main( )
         ubo.uploadAll( );
 
 
-        gl.bindVertexArray(VAO);
         for(let [name, dict] of Object.entries(celBodies)) {
             dict.model = mat4.create();
 
