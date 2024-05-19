@@ -64,7 +64,7 @@ void main( )
 
 
     // Ambient
-    float ambientStrength = 0.1;
+    float ambientStrength = 0.8;
     vec3 ambientColor = vec3(1.0, 1.0, 1.0);
 
     // Diffuse 
@@ -233,7 +233,7 @@ void main( )
     
    // VECTORS OF LOOKAT MATRIX
 
-    const initialCamPos   = new Float32Array([0.0, 0.0, 200.0]);
+    const initialCamPos   = new Float32Array([0.0, 0.0, 50.0]);
     const initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
     const initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
     var yaw = -90.0; var pitch = 0.0; 
@@ -243,10 +243,7 @@ void main( )
     var cameraUp    = new Float32Array(initialCamUp)   ;
     // ROTATION OF CAMERA
 
-    // DATA
-    const timeAccel = 60000; // 2 000 000
-    const sec2day = 1 / (3600 * 24);
-    const AU = 20;
+    
 
     let celBodies = {
         sun: {
@@ -363,6 +360,10 @@ void main( )
     // --------------------------------------------------------------------------------------------------------------------------
     // -----------------------------------------{ RENDER FUNC }------------------------------------------------------------------
     // --------------------------------------------------------------------------------------------------------------------------
+    const oneOn60 = 1 / 60;
+    const oneOn24 = 1 / 24;
+    const timeAccel = 1;
+    const AU = 20;
     function renderFunc( time )
     {
         gl.viewport(0, 0, 1024 , 1024);
@@ -371,8 +372,12 @@ void main( )
         gl.enable( gl.DEPTH_TEST );
 
 
-        time *= timeAccel * 0.001 * sec2day; // to seconds
-
+        time *= timeAccel; // to milliseconds
+        timeSec = time * 0.001; // to seconds
+        timeMin = timeSec * oneOn60; // to minutes
+        timeHour = timeMin * oneOn60; // to hours
+        timeDay = timeHour * oneOn24; // to days
+        
     	
         // ----{ CAMERA MATRICES }----
         // PROJ MATRIX
@@ -410,7 +415,7 @@ void main( )
             dict.pos = vec3.create()
             
             if(dict.hasOwnProperty('orbitR')){ 
-                const orbitAngle = time*2*Math.PI/dict.orbitT;
+                const orbitAngle = 2 * Math.PI * timeDay / dict.orbitT;
 
                 const orbitRelativePos =  new Float32Array([Math.cos(orbitAngle), 0.0, Math.sin(orbitAngle)]).map(x => x * dict.orbitR * AU);
                 vec3.add(dict.pos, orbitRelativePos, celBodies[dict.orbitedBody].pos);
@@ -427,9 +432,13 @@ void main( )
                     mat4.translate(dict.model, dict.model, dict.pos);
                     mat4.rotateY(dict.model, dict.model, angle);
                 }
-                else{
-                    const axisRotAngle = time*2*Math.PI/dict.axisRotationT;
-                    mat4.rotate(dict.model, dict.model, axisRotAngle, new Float32Array([0.0, 1.0, 0.0]));
+                else {
+                    //const axisRotAngle = time*/;
+                    const angle = 2 * Math.PI * timeDay / dict.axisRotationT;
+                    mat4.rotate(dict.model, dict.model, angle, new Float32Array([0.0, 1.0, 0.0]));
+                    mat4.rotate(dict.model, dict.model, Math.radians(0), new Float32Array([1.0, 0.0, 0.0]));
+                    mat4.rotate(dict.model, dict.model, Math.radians(180), new Float32Array([0.0, 0.0, 1.0]));
+
                 }
 
             }
