@@ -163,12 +163,13 @@ void main( )
         vec3 reflectDir = reflect(-lightDir, norm);
         vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
     
-        vec4 texColor = texture(diffuseTex, vTexCoord);
+        //vec2 fixedvTexCoord = vec2(-vTexCoord.y, -vTexCoord.x)
+        vec4 texColor = texture(diffuseTex, -vTexCoord);
             
-        vec3 lighting = ambient + diffuse + specular;
-        fragColor = vec4(lighting * texColor.rgb, texColor.a);
+        vec3 lighting =  texColor.a * ambient + diffuse + specular;
+        fragColor = vec4(lighting * texColor.rgb, 1.0);
 
-        if (texColor.a < 0.2) {
+        if (texColor.a < 0.4) {
             discard;
         }
     }
@@ -195,7 +196,7 @@ void main( )
 
     let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view", "sunLightPos"]); 
     ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram); ubo.attachProgram(sunShaderProgram);
-    gl.clearColor( 1.0, 1.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor( 0.0, 0.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     
 
     // ---------------------------------------------------
@@ -252,21 +253,21 @@ void main( )
         },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             axisRotationT: 59.0,
-            scale: 1,
+            scale: 0.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "mercury."},},
+            textures: {diffuseTex: {file: "mercury.jpg"},},
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
-            axisRotationT: 243.0,//había un menos en el valor original, no sé si está bien
-            scale: 1,
+            axisRotationT: -243.0,//había un menos en el valor original, no sé si está bien, si esta bien, venus gira en el otro direccion que las otras planetas
+            scale: 1.2,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "venus."},},
+            textures: {diffuseTex: {file: "venus.jpg"},},
             sphereShape: true,
         },earth: {
             orbitT: 365.25, orbitR: 1.0,
             axisRotationT: 1.0,
-            scale: 2.0,
+            scale: 1.0,
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
@@ -281,37 +282,37 @@ void main( )
         },mars: {
             orbitT: 687, orbitR: 1.52,
             axisRotationT: 1.026,
-            scale: 1,
+            scale: 0.6,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "mars."},},
+            textures: {diffuseTex: {file: "mars.jpg"},},
             sphereShape: true,
         },jupiter: {
             orbitT: 4331, orbitR: 5.21,
             axisRotationT: 0.42,
-            scale: 1,
+            scale: 4,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "jupiter.png"},},
+            textures: {diffuseTex: {file: "jupiter.jpg"},},
             sphereShape: true,
         },saturn: {
             orbitT: 10756, orbitR: 9.54,
             axisRotationT: 0.446,
-            scale: 1,
+            scale: 3,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "saturn.png"},},
+            textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: true,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
             axisRotationT: 0.7183,
-            scale: 1,
+            scale: 2.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "uranus."},},
+            textures: {diffuseTex: {file: "uranus.jpg"},},
             sphereShape: true,
         },neptune: {
             orbitT: 60190, orbitR: 30.11,
             axisRotationT: 0.67,
-            scale: 1,
+            scale: 2.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "neptune."},},
+            textures: {diffuseTex: {file: "neptune.jpg"},},
             sphereShape: true,
         }, earthAtm: {
             axisRotationT: 1.01,
