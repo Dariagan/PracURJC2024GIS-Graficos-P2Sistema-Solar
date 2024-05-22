@@ -1,3 +1,5 @@
+
+
 function createSphere( )
 {
 	const radius = 1;
@@ -15,7 +17,7 @@ function createSphere( )
 
 	const vertex = vec3.create( );
 	const normal = vec3.create( );
-
+	
 	// buffers
 
 	const indices = [];
@@ -68,8 +70,10 @@ function createSphere( )
 			normals.push( ...normal );
 
 			// uv
-			uvs.push( u + uOffset, 1 - v );
-
+			uv1 = u + uOffset;
+			uv2 = 1 - v;
+			uvs.push( uv1, uv2 );
+	
 			verticesRow.push( index++ );
 
 		}
@@ -98,6 +102,7 @@ function createSphere( )
 		}
 	}
 
+	
 	return {
 		vertices: vertices,
 		normals: normals,
