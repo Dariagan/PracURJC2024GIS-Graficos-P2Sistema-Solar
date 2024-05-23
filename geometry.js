@@ -3,8 +3,8 @@
 function createSphere( )
 {
 	const radius = 1;
-	const widthSegments = 32;
-	const heightSegments = 16;
+	const widthSegments = 64;
+	const heightSegments = 32;
 	const phiStart = 0;
 	const phiLength = Math.PI * 2;
 	const thetaStart = 0;
