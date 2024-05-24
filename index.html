@@ -5,7 +5,6 @@
     <script type="text/javascript" src="auxiliars.js"></script>
     <script type="text/javascript" src="shader.js"></script>
     <script type="text/javascript" src="ubo.js"></script>
-    <script type="text/javascript" src="cube.js"></script>
     <script type="text/javascript" src="gl-matrix.js"></script>
     <script type="text/javascript" src="geometry.js"></script>
     <style type="text/css">/*canvas {width: 100%;height: 100%;display: block;}body{margin: 0;overflow: hidden;}*/</style>
@@ -38,7 +37,7 @@ void main( )
     fragPos = vec3(model * vec4(aPos, 1.0));
     gl_Position = projection * view * model * vec4(aPos, 1.0);
     mat3 normalM = mat3(transpose(inverse(model)));
-    normal = normalM * aNormal;
+    normal = normalize(normalM * aNormal);
 
     vTexCoord = aTexCoord;
 }
@@ -64,16 +63,16 @@ void main( )
 
 
     // Ambient
-    float ambientStrength = 0.8;
+    float ambientStrength = 0.0;
     vec3 ambientColor = vec3(1.0, 1.0, 1.0);
 
     // Diffuse 
-    float diffuseStrength = 0.6;
+    float diffuseStrength = 0.9;
     vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
 
     // Specular
-    float specularStrength = 0.5;
-    float specularRadius = 32.0;
+    float specularStrength = 0.9;
+    float specularRadius = 64.0;
     vec3 specularColor = vec3(1.0, 1.0, 1.0); 
 
     uniform UBO {
@@ -83,21 +82,33 @@ void main( )
     };  
     
     void main(){
-        vec3 norm = normalize(normal);
+        vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
+
+        // Normal calculs
+        vec3 normalMap = normalize(texture(normalTex, ModifvTexCoord).rgb  * 2.0 - 1.0);
+
+        vec3 tangent = vec3(normal.y, -normal.x, normal.z);
+        vec3 bitangent = cross(normal, tangent);
+
+        mat3 TBN = mat3(tangent, bitangent, normal);
+        vec3 worldNormal = normalize(TBN * normalMap);
 
         // Ambient
         vec3 ambient = ambientStrength * ambientColor;
 
         // Diffuse
         vec3 lightDir = normalize(sunLightPos - fragPos);
-        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+        vec3 diffuse =  max(dot(worldNormal, lightDir), 0.0) * diffuseColor * diffuseStrength;
 
         // specular
         vec3 viewDir = normalize(fragPos - cameraPos );
-        vec3 reflectDir = reflect(lightDir, norm);
-        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+        vec3 reflectDir = reflect(lightDir, worldNormal);
+        vec3 specMap = texture(specularTex, ModifvTexCoord).rgb;
+        vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor * specMap;
+
         
-        fragColor = vec4((ambient + specular + diffuse), 1.0) * texture(diffuseTex, vTexCoord).rgba;
+        vec3 color = (ambient + specular + diffuse);
+        fragColor = vec4(color, 1.0) * texture(diffuseTex, ModifvTexCoord).rgba;
 
     }
 </script>
@@ -113,13 +124,15 @@ void main( )
     uniform sampler2D diffuseTex;
     
     void main(){
-        fragColor = texture(diffuseTex, vTexCoord).rgba;
+        vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
+
+        fragColor = texture(diffuseTex, ModifvTexCoord).rgba;
     }
 </script>
 
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
     precision mediump float;
-    
+
     in vec3 normal;
     in vec3 fragPos;
     in vec2 vTexCoord;
@@ -128,20 +141,20 @@ void main( )
     
     uniform sampler2D diffuseTex;
     uniform vec3 cameraPos;
-
+    
     // Ambient
-    float ambientStrength = 0.2;
+    float ambientStrength = 0.0; 
     vec3 ambientColor = vec3(1.0, 1.0, 1.0);
-
+    
     // Diffuse 
-    float diffuseStrength = 0.7;
+    float diffuseStrength = 0.9;
     vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
-
+    
     // Specular
     float specularStrength = 0.6;
     float specularRadius = 32.0;
     vec3 specularColor = vec3(1.0, 1.0, 1.0); 
-
+    
     uniform UBO {
         mat4 projection;
         mat4 view;
@@ -150,26 +163,30 @@ void main( )
     
     void main(){
 
-        vec3 norm = normalize(normal);
+        vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
 
+        vec3 norm = normalize(normal);
+    
         // Ambient
         vec3 ambient = ambientStrength * ambientColor;
-
+    
         // Diffuse
         vec3 lightDir = normalize(sunLightPos - fragPos);
-        vec3 diffuse =  max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
-
-        // specular
-        vec3 viewDir = normalize(fragPos - cameraPos );
-        vec3 reflectDir = reflect(lightDir, norm);
+        vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+    
+        // Specular
+        vec3 viewDir = normalize(cameraPos - fragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);
         vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+    
+        vec4 texColor = texture(diffuseTex, ModifvTexCoord);
+            
+        vec3 lighting =  texColor.a * ambient + diffuse + specular;
+        fragColor = vec4(lighting * texColor.rgb, 1.0);
 
-        vec4 texColor = texture(diffuseTex, vTexCoord);
-
-        if (texColor.a < 0.7)
+        if (texColor.a < 0.4) {
             discard;
-        
-        fragColor = vec4((ambient + specular + diffuse), 1.0) * texColor;
+        }
     }
     </script>
 
@@ -192,9 +209,9 @@ void main( )
     earthShaderProgram.compile(); earthShaderProgram.link(); earthShaderProgram.autocatching();
     sunShaderProgram.compile(); sunShaderProgram.link(); sunShaderProgram.autocatching();
 
-    let ubo = new UBO( "UBO", shaderProgram, [ "projection", "view", "sunLightPos"]); 
+    let ubo = new UBO( "UBO", shaderProgram, ["projection", "view", "sunLightPos"]); 
     ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram); ubo.attachProgram(sunShaderProgram);
-    gl.clearColor( 1.0, 0.5, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor( 0.0, 0.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     
 
     // ---------------------------------------------------
@@ -250,7 +267,6 @@ void main( )
     gl.bindVertexArray(null);
     
    // VECTORS OF LOOKAT MATRIX
-
     const initialCamPos   = new Float32Array([0.0, 0.0, 50.0]);
     const initialCamFront = new Float32Array([0.0, 0.0, 0.0]);
     const initialCamUp    = new Float32Array([0.0, 1.0, 0.0]);
@@ -259,9 +275,7 @@ void main( )
     var cameraPos   = new Float32Array(initialCamPos)  ;
     var cameraFront = new Float32Array(initialCamFront);
     var cameraUp    = new Float32Array(initialCamUp)   ;
-    // ROTATION OF CAMERA
 
-    
 
     let celBodies = {
         sun: {
@@ -272,25 +286,25 @@ void main( )
         },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             axisRotationT: 59.0,
-            scale: 1,
+            scale: 0.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "mercury."},},
+            textures: {diffuseTex: {file: "mercury.jpg"},},
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
-            axisRotationT: 243.0,//había un menos en el valor original, no sé si está bien
-            scale: 1,
+            axisRotationT: -243.0,//había un menos en el valor original, no sé si está bien, si esta bien, venus gira en el otro direccion que las otras planetas
+            scale: 1.2,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "venus."},},
+            textures: {diffuseTex: {file: "venus.jpg"},},
             sphereShape: true,
         },earth: {
             orbitT: 365.25, orbitR: 1.0,
             axisRotationT: 1.0,
-            scale: 2.0,
+            scale: 1.0,
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
-        },moon: {//NOT an orbit around the sun, manage special case in for-loops!
+        },moon: { // NOT an orbit around the sun, manage special case in for-loops!
             orbitT: 28.0, orbitR: 0.2,
             scale: 0.2,
             orbitedBody: "earth",
@@ -301,23 +315,23 @@ void main( )
         },mars: {
             orbitT: 687, orbitR: 1.52,
             axisRotationT: 1.026,
-            scale: 1,
+            scale: 0.6,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "mars."},},
+            textures: {diffuseTex: {file: "mars.jpg"},},
             sphereShape: true,
         },jupiter: {
             orbitT: 4331, orbitR: 5.21,
             axisRotationT: 0.42,
-            scale: 10,
+            scale: 4,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "jupiter.png"},},
+            textures: {diffuseTex: {file: "jupiter.jpg"},},
             sphereShape: true,
         },saturn: {
             orbitT: 10756, orbitR: 9.54,
             axisRotationT: 0.446,
-            scale: 1,
+            scale: 3,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "saturn.png"},},
+            textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: true,
         },saturnRing: {
             orbitT: 10756, orbitR: 9.54,
@@ -329,16 +343,16 @@ void main( )
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
             axisRotationT: 0.7183,
-            scale: 1,
+            scale: 2.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "uranus."},},
+            textures: {diffuseTex: {file: "uranus.jpg"},},
             sphereShape: true,
         },neptune: {
             orbitT: 60190, orbitR: 30.11,
             axisRotationT: 0.67,
-            scale: 1,
+            scale: 2.5,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "neptune."},},
+            textures: {diffuseTex: {file: "neptune.jpg"},},
             sphereShape: true,
         }, earthAtm: {
             axisRotationT: 1.01,
@@ -350,7 +364,7 @@ void main( )
     }
     celBodies.earthAtm.orbitR = celBodies.earth.orbitR;
     celBodies.earthAtm.orbitT = celBodies.earth.orbitT
-    celBodies.earthAtm.scale = celBodies.earth.scale*1.01
+    celBodies.earthAtm.scale = celBodies.earth.scale * 1.01;
 
     const createImgOnLoadCallback = function(img, texId){
         return function(){
@@ -367,8 +381,6 @@ void main( )
         
         dict.scale = new Float32Array([dict.scale, dict.scale, dict.scale]);
 
- 
-
         if (name != "sun" && ! dict.hasOwnProperty("orbitedBody")) 
             dict.orbitedBody = "sun";
         
@@ -379,7 +391,6 @@ void main( )
             const FOLDER = "resources/"
             img.src = FOLDER + texDict.file;
         }        
-    
     }
 
     function getRandom(min, max) {
@@ -416,7 +427,7 @@ void main( )
     // --------------------------------------------------------------------------------------------------------------------------
     const oneOn60 = 1 / 60;
     const oneOn24 = 1 / 24;
-    const timeAccel = 1;
+    const timeAccel = 1000;
     const AU = 20;
     function renderFunc( time )
     {
@@ -425,14 +436,12 @@ void main( )
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
-
-        time *= timeAccel; // to milliseconds
-        timeSec = time * 0.001; // to seconds
-        timeMin = timeSec * oneOn60; // to minutes
-        timeHour = timeMin * oneOn60; // to hours
-        timeDay = timeHour * oneOn24; // to days
+        time *= timeAccel; // milliseconds
+        timeSec = time * 0.001; // seconds
+        timeMin = timeSec * oneOn60; // minutes
+        timeHour = timeMin * oneOn60; // hours
+        timeDay = timeHour * oneOn24; // days
         
-    	
         // ----{ CAMERA MATRICES }----
         // PROJ MATRIX
         let proj = mat4.create();
@@ -470,46 +479,53 @@ void main( )
 
 
         for(let [name, dict] of Object.entries(celBodies)) {
-            dict.model = mat4.create();
-
+            dict.modelPos = mat4.create();
+            dict.modelRot = mat4.create();
             dict.pos = vec3.create()
             
             if(dict.hasOwnProperty('orbitR')){ 
                 const orbitAngle = 2 * Math.PI * timeDay / dict.orbitT;
-
-                const orbitRelativePos =  new Float32Array([Math.cos(orbitAngle), 0.0, Math.sin(orbitAngle)]).map(x => x * dict.orbitR * AU);
-                vec3.add(dict.pos, orbitRelativePos, celBodies[dict.orbitedBody].pos);
-
-                mat4.translate(dict.model, dict.model, dict.pos);
-
-
+                
+                var orbitMat = mat4.create();
+                var rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
+                mat4.rotate( dict.modelPos, dict.modelPos, orbitAngle, rotAxis);
+                var rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
+                mat4.translate( dict.modelPos,  dict.modelPos, rotDir);
+                mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
+               
+            
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt){
+                    
                     let direction = vec3.create();
-                    vec3.subtract(direction, celBodies[dict.orbitedBody].pos, dict.pos);
+                    var parentModel =  celBodies[dict.orbitedBody].modelPos;
+                    var parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
+                    var thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
+                    vec3.subtract(direction, parentPos, thisPos);
                     vec3.normalize(direction, direction);
                     const angle = -Math.atan2(direction[2], direction[0]);
-                    mat4.identity(dict.model);
-                    mat4.translate(dict.model, dict.model, dict.pos);
-                    mat4.rotateY(dict.model, dict.model, angle);
+                    mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
+                    
                 }
                 else {
-                    //const axisRotAngle = time*/;
                     const angle = 2 * Math.PI * timeDay / dict.axisRotationT;
-                    mat4.rotate(dict.model, dict.model, angle, new Float32Array([0.0, 1.0, 0.0]));
-                    mat4.rotate(dict.model, dict.model, Math.radians(0), new Float32Array([1.0, 0.0, 0.0]));
-                    mat4.rotate(dict.model, dict.model, Math.radians(180), new Float32Array([0.0, 0.0, 1.0]));
-
+                    mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
+                  
                 }
-
+            } 
+            else 
+            {
+                mat4.rotate(dict.modelPos, dict.modelPos, 0.0, new Float32Array([1.0, 0.0, 0.0]));
             }
-            else mat4.translate(dict.model, dict.model, dict.pos);
-
+        }
+        for(let [name, dict] of Object.entries(celBodies)) {
+            dict.model = mat4.create();
+            mat4.multiply(dict.model, dict.model, dict.modelPos);
+            mat4.multiply(dict.model, dict.model, dict.modelRot);
             mat4.scale(dict.model, dict.model, dict.scale)
 
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
             dict.program.setUniform3f("cameraPos", ...cameraPos);
-
 
             let i = 0;
             for(const [uvName, texDict] of Object.entries(dict.textures)){

@@ -62,7 +62,7 @@ let firstMouseMov = true;
 // CAMERA VARIABLES
 const sensibility = 1;
 const cameraMovSpeed = sensibility; // in meter per tick
-const cameraRotSpeed = sensibility / 10; // in meter per tick
+const cameraRotSpeed = sensibility / 5; // in meter per tick
 // in degrees
 var yaw = -90.0, pitch = 0.0; 
 
