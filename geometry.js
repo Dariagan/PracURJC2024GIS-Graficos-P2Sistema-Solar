@@ -113,8 +113,8 @@ function createSphere( )
 
 function createRing( )
 {
-	const innerRadius = 1;
-	const outerRadius = 0.8;
+	const innerRadius = 0.6;
+	const outerRadius = 1;
 	const thetaSegments = 40;
 	const phiSegments = 13;
 	const thetaStart = 0;

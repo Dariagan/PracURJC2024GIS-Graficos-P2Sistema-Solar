@@ -281,34 +281,34 @@ void main( )
 
     let celBodies = {
         sun: {
-            scale: 5,
+            scale: 5.0,
             program: sunShaderProgram,
             textures: {diffuseTex: {file: "sun.png"},},
             sphereShape: true,
         },mercury: {
             orbitT: 88.0, orbitR: 0.38, 
             axisRotationT: 59.0,
-            scale: 0.5,
+            scale: 0.038,
             program: shaderProgram,
             textures: {diffuseTex: {file: "mercury.jpg"},},
             sphereShape: true,
         },venus: {
             orbitT: 224.7, orbitR: 0.72,
             axisRotationT: -243.0,//había un menos en el valor original, no sé si está bien, si esta bien, venus gira en el otro direccion que las otras planetas
-            scale: 1.2,
+            scale: 0.042,
             program: shaderProgram,
             textures: {diffuseTex: {file: "venus.jpg"},},
             sphereShape: true,
         },earth: {
             orbitT: 365.25, orbitR: 1.0,
             axisRotationT: 1.0,
-            scale: 1.0,
+            scale: 0.05,
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
         },moon: { 
             orbitT: 28.0, orbitR: 0.2,
-            scale: 0.2,
+            scale: 0.012,
             orbitedBody: "earth",
             lookAt: true,
             program: shaderProgram,
@@ -317,41 +317,42 @@ void main( )
         },mars: {
             orbitT: 687, orbitR: 1.52,
             axisRotationT: 1.026,
-            scale: 0.6,
+            scale: 0.026,
             program: shaderProgram,
             textures: {diffuseTex: {file: "mars.jpg"},},
             sphereShape: true,
         },jupiter: {
             orbitT: 4331, orbitR: 5.21,
-            axisRotationT: 0.42,
-            scale: 4,
+            axisRotationT: 0.21,
+            scale: 1.12,
             program: shaderProgram,
             textures: {diffuseTex: {file: "jupiter.jpg"},},
             sphereShape: true,
         },saturn: {
             orbitT: 10756, orbitR: 9.54,
             axisRotationT: 0.446,
-            scale: 3,
+            scale: 0.47,
             program: shaderProgram,
             textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: true,
         },saturnRing: {
             orbitT: 10756, orbitR: 9.54,
-            scale: 4,
+            axisRotationT: 0.446,
+            scale: 0.7,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "ring.png"},},
+            textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: false,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
             axisRotationT: 0.7183,
-            scale: 2.5,
+            scale: 0.20,
             program: shaderProgram,
             textures: {diffuseTex: {file: "uranus.jpg"},},
             sphereShape: true,
         },neptune: {
             orbitT: 60190, orbitR: 30.11,
             axisRotationT: 0.67,
-            scale: 2.5,
+            scale: 0.19,
             program: shaderProgram,
             textures: {diffuseTex: {file: "neptune.jpg"},},
             sphereShape: true,
@@ -513,16 +514,17 @@ void main( )
                   
                 }
             } 
-            else 
-            {
-                mat4.rotate(dict.modelPos, dict.modelPos, 0.0, new Float32Array([1.0, 0.0, 0.0]));
-            }
+            else {mat4.rotate(dict.modelPos, dict.modelPos, 0.0, new Float32Array([1.0, 0.0, 0.0]));}
         }
         for(let [name, dict] of Object.entries(celBodies)) {
             dict.model = mat4.create();
             mat4.multiply(dict.model, dict.model, dict.modelPos);
             mat4.multiply(dict.model, dict.model, dict.modelRot);
-            mat4.scale(dict.model, dict.model, dict.scale)
+            if(!dict.sphereShape)
+                mat4.rotateX(dict.model, dict.model, Math.PI / 2)
+
+            const SCALE_MULTIPLIER = 1;//NOT MORE THAN 2 OR SUN WILL ABSORB PLANETS
+            mat4.scale(dict.model, dict.model, dict.scale.map(x=> x * SCALE_MULTIPLIER))
 
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
@@ -543,13 +545,11 @@ void main( )
 
             if(dict.sphereShape) {
                 gl.bindVertexArray(VAOsphere);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
-
+ 
                 gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
             }
             else {
                 gl.bindVertexArray(VAOring);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
 
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
             }
