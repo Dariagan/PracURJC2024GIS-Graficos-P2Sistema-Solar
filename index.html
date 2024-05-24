@@ -182,7 +182,7 @@ void main( )
         vec4 texColor = texture(diffuseTex, ModifvTexCoord);
             
         vec3 lighting =  texColor.a * ambient + diffuse + specular;
-        fragColor = vec4(lighting * vec3(1.0,1.0,1.0), 1.0);
+        fragColor = texColor.rgba;
 
         if (texColor.a < 0.4) {
             discard;
@@ -336,11 +336,10 @@ void main( )
             textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: true,
         },saturnRing: {
-            orbitT: 20756, orbitR: 0.4,
-            axisRotationT: 0.446,
-            scale: 1,
+            orbitT: 10756, orbitR: 9.54,
+            scale: 4,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "rock.png"},},
+            textures: {diffuseTex: {file: "ring.png"},},
             sphereShape: false,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
@@ -488,10 +487,10 @@ void main( )
             if(dict.hasOwnProperty('orbitR')){ 
                 const orbitAngle = 2 * Math.PI * timeDay / dict.orbitT;
                 
-                var orbitMat = mat4.create();
-                var rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
+                let orbitMat = mat4.create();
+                const rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
                 mat4.rotate(dict.modelPos, dict.modelPos, orbitAngle, rotAxis);
-                var rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
+                const rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
                 mat4.translate(dict.modelPos,  dict.modelPos, rotDir);
                 mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
                
@@ -499,16 +498,16 @@ void main( )
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt){
                     
                     let direction = vec3.create();
-                    var parentModel =  celBodies[dict.orbitedBody].modelPos;
-                    var parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
-                    var thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
+                    let parentModel =  celBodies[dict.orbitedBody].modelPos;
+                    let parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
+                    let thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
                     vec3.subtract(direction, parentPos, thisPos);
                     vec3.normalize(direction, direction);
                     const angle = -Math.atan2(direction[2], direction[0]);
                     mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
                     
                 }
-                else {
+                else if(dict.hasOwnProperty("axisRotationT")){
                     const angle = 2 * Math.PI * timeDay / dict.axisRotationT;
                     mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
                   
