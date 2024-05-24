@@ -182,7 +182,7 @@ void main( )
         vec4 texColor = texture(diffuseTex, ModifvTexCoord);
             
         vec3 lighting =  texColor.a * ambient + diffuse + specular;
-        fragColor = vec4(lighting * texColor.rgb, 1.0);
+        fragColor = vec4(lighting * vec3(1.0,1.0,1.0), 1.0);
 
         if (texColor.a < 0.4) {
             discard;
@@ -211,58 +211,60 @@ void main( )
 
     let ubo = new UBO( "UBO", shaderProgram, ["projection", "view", "sunLightPos"]); 
     ubo.attachProgram(shaderProgram); ubo.attachProgram(earthShaderProgram); ubo.attachProgram(sunShaderProgram);
-    gl.clearColor( 0.0, 0.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor( 0.0, 1.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     
 
     // ---------------------------------------------------
     const sphereGeo = createSphere( );
     const ringGeo = createRing( );
 
-    let VAOsphere = gl.createVertexArray();
+    let VAOsphere = gl.createVertexArray();  let EBOsphere = gl.createBuffer();
     let VBOsphereVert = gl.createBuffer(); let VBOsphereNorm = gl.createBuffer(); let VBOsphereUvs = gl.createBuffer(); 
-    let VAOring = gl.createVertexArray();
+
+    let VAOring = gl.createVertexArray(); let EBOring = gl.createBuffer();
     let VBOringVert = gl.createBuffer(); let VBOringNorm = gl.createBuffer(); let VBOringUvs = gl.createBuffer(); 
     
-    let EBOsphere = gl.createBuffer(); let EBOring = gl.createBuffer();
     gl.bindVertexArray(VAOsphere);
     // position attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereVert);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.vertices), gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
     // normal attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereNorm);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.normals), gl.STATIC_DRAW);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(1);
     // texCoord attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereUvs);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(2);
+    
     // index attribute
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(sphereGeo.indices), gl.STATIC_DRAW);
-    
-    gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.enableVertexAttribArray(2);
+    gl.bindVertexArray(null);
 
     gl.bindVertexArray(VAOring);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringVert);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.vertices), gl.STATIC_DRAW);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
     
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringNorm);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.normals), gl.STATIC_DRAW);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(1);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringUvs);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.texCoords), gl.STATIC_DRAW);
     gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-
+    gl.enableVertexAttribArray(2);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(ringGeo.indices), gl.STATIC_DRAW);
 
-    gl.enableVertexAttribArray(0);gl.enableVertexAttribArray(1);gl.enableVertexAttribArray(2);
-
-    // Unbind 
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
     gl.bindVertexArray(null);
     
@@ -304,7 +306,7 @@ void main( )
             program: earthShaderProgram,
             textures: {diffuseTex:{file: "earth_diffuse.jpg"}, normalTex: {file: "earth_normal.jpg"}, specularTex: {file: "earth_specular.jpg"},},
             sphereShape: true,
-        },moon: { // NOT an orbit around the sun, manage special case in for-loops!
+        },moon: { 
             orbitT: 28.0, orbitR: 0.2,
             scale: 0.2,
             orbitedBody: "earth",
@@ -334,11 +336,11 @@ void main( )
             textures: {diffuseTex: {file: "saturn.jpg"},},
             sphereShape: true,
         },saturnRing: {
-            orbitT: 10756, orbitR: 9.54,
+            orbitT: 20756, orbitR: 0.4,
             axisRotationT: 0.446,
-            scale: 40,
+            scale: 1,
             program: shaderProgram,
-            textures: {diffuseTex: {file: "saturn_ring.png"},},
+            textures: {diffuseTex: {file: "rock.png"},},
             sphereShape: false,
         },uranus: {
             orbitT: 30678, orbitR: 19.18,
@@ -427,7 +429,7 @@ void main( )
     // --------------------------------------------------------------------------------------------------------------------------
     const oneOn60 = 1 / 60;
     const oneOn24 = 1 / 24;
-    const timeAccel = 1000;
+    const timeAccel = 100000;
     const AU = 20;
     function renderFunc( time )
     {
@@ -488,9 +490,9 @@ void main( )
                 
                 var orbitMat = mat4.create();
                 var rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
-                mat4.rotate( dict.modelPos, dict.modelPos, orbitAngle, rotAxis);
+                mat4.rotate(dict.modelPos, dict.modelPos, orbitAngle, rotAxis);
                 var rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
-                mat4.translate( dict.modelPos,  dict.modelPos, rotDir);
+                mat4.translate(dict.modelPos,  dict.modelPos, rotDir);
                 mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
                
             
@@ -542,11 +544,14 @@ void main( )
 
             if(dict.sphereShape) {
                 gl.bindVertexArray(VAOsphere);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
+
                 gl.drawElements(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0);
             }
             else {
-                console.log("asd")
                 gl.bindVertexArray(VAOring);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
+
                 gl.drawElements(gl.TRIANGLES, ringGeo.indices.length, gl.UNSIGNED_INT, 0);
             }
 
