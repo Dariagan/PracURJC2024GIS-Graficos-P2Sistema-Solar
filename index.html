@@ -176,7 +176,7 @@ void main(){
     vec4 texColor = texture(diffuseTex, ModifvTexCoord);
         
     vec3 lighting =  texColor.a * ambient + diffuse + specular;
-    fragColor = texColor.rgba;
+    fragColor = vec4(lighting * texColor.rgb, 1.0);
 
     if (texColor.a < 0.4) {discard;}
 }
@@ -187,7 +187,7 @@ void main(){
 <script type="text/javascript" src="controls.js"></script>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
-    gl.clearColor( 0.0, 1.0, 0.0, 1.0 ); 
+     gl.clearColor( 0.0, 0.0, 0.0, 1.0 ); 
 
     let basicShaderProgram = new ShaderProgram(); let asteroidShaderProgram = new ShaderProgram();
     let earthShaderProgram = new ShaderProgram(); let sunShaderProgram = new ShaderProgram();
@@ -383,7 +383,7 @@ void main(){
         return Math.random() * (max - min) + min;
     }
     const GLOBAL_PLANET_SCALE_MULTIPLIER = 2;
-    const ASTEROID_SCALE_MULTIPLIER = 3;
+    const ASTEROID_SCALE_MULTIPLIER = 4;
     const ASTEROID_COUNT = 1000;
     let asteroidModels = new Array(ASTEROID_COUNT);
     const radius = 50; const offset = 2;
@@ -414,12 +414,11 @@ void main(){
     // --------------------------------------------------------------------------------------------------------------------------
     const oneOn60 = 1 / 60;
     const oneOn24 = 1 / 24;
-    const timeAccel = 100;
+    const timeAccel = 100000;
     const AU = 20;
     function renderFunc( time )
     {
-        gl.viewport(0, 0, 1024 , 1024)
-        //gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.viewport(0, 0, 1024 , 1024);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
 
