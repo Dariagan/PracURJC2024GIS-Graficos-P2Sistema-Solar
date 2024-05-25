@@ -83,7 +83,7 @@ uniform sampler2D diffuseTex;
 uniform sampler2D normalTex;
 uniform sampler2D specularTex;
 
-const vec3 ambient = 0.0 * vec3(1.0, 1.0, 1.0);
+const vec3 ambient = 0.2 * vec3(1.0, 1.0, 1.0);
 const vec3 diffuseStrength = 0.9 * vec3(1.0, 1.0, 1.0);
 
 const vec3 specularStrength = 0.9 * vec3(1.0, 1.0, 1.0);
@@ -149,7 +149,7 @@ out vec4 fragColor;
 uniform sampler2D diffuseTex;
 uniform vec3 cameraPos;
 
-const vec3 ambient = 0.1 * vec3(1.0, 1.0, 1.0);
+const vec3 ambient = 0.2 * vec3(1.0, 1.0, 1.0);
 const vec3 diffuseStrength = 0.9 * vec3(1.0, 1.0, 1.0);
 const vec3 specularStrength = 0.6 * vec3(1.0, 1.0, 1.0);
 const float specularRadius = 32.0;
@@ -388,8 +388,6 @@ void main(){
     let asteroidModels = new Array(ASTEROID_COUNT);
     const radius = 50; const offset = 2;
 
-
-    //TO-DO: ADD TIME-BASED ROTATION (THIS SHOULD BE IN RENDER FUNC)
     for (let i = 0; i < ASTEROID_COUNT; i++) {
         let model = mat4.create();
         
@@ -411,6 +409,7 @@ void main(){
         asteroidModels[i] = model;
     }
 
+
     // --------------------------------------------------------------------------------------------------------------------------
     // -----------------------------------------{ RENDER FUNC }------------------------------------------------------------------
     // --------------------------------------------------------------------------------------------------------------------------
@@ -422,14 +421,14 @@ void main(){
     {
         gl.viewport(0, 0, 1024 , 1024);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
-        gl.enable( gl.DEPTH_TEST );
+        gl.enable( gl.DEPTH_TEST );        
 
         time *= timeAccel; // milliseconds
         timeSec = time * 0.001; // seconds
         timeMin = timeSec * oneOn60; // minutes
         timeHour = timeMin * oneOn60; // hours
         timeDay = timeHour * oneOn24; // days
-        
+
         // ----{ CAMERA MATRICES }----
         // PROJ MATRIX
         let proj = mat4.create();
@@ -480,15 +479,14 @@ void main(){
                 
                 let orbitMat = mat4.create();
                 const rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
-                mat4.rotate(dict.modelPos, dict.modelPos, orbitAngle, rotAxis);
-                const rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
-                mat4.translate(dict.modelPos,  dict.modelPos, rotDir);
+                mat4.rotateY(dict.modelPos, dict.modelPos, orbitAngle)
+                mat4.translate(dict.modelPos, dict.modelPos, new Float32Array([AU * dict.orbitR, 0 , 0]));
                 mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
             
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt)
                 {
                     let direction = vec3.create();
-                    let parentModel =  celBodies[dict.orbitedBody].modelPos;
+                    let parentModel = celBodies[dict.orbitedBody].modelPos;
                     let parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
                     let thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
                     vec3.subtract(direction, parentPos, thisPos);
@@ -550,7 +548,7 @@ void main(){
         requestAnimationFrame( renderFunc );
     }
 
-    function resizeCanvas(){const canvas = gl.canvas; const displayWidth  = window.innerWidth; const displayHeight = window.innerHeight; const needResize = canvas.width  !== displayWidth || canvas.height !== displayHeight;if (needResize) {canvas.width  = displayWidth; canvas.height = displayHeight; gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );}}
+    function resizeCanvas(){const canvas = gl.canvas; const displayWidth  = window.innerWidth; const displayHeight = window.innerHeight; const needResize = canvas.width !== displayWidth || canvas.height !== displayHeight;if (needResize) {canvas.width  = displayWidth; canvas.height = displayHeight; gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );}}
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
