@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
     <title>Prác.2 Remi y Stefano</title>
     <script type="text/javascript" src="auxiliars.js"></script>
@@ -7,7 +6,7 @@
     <script type="text/javascript" src="ubo.js"></script>
     <script type="text/javascript" src="gl-matrix.js"></script>
     <script type="text/javascript" src="geometry.js"></script>
-    <style type="text/css">/*canvas {width: 100%;height: 100%;display: block;}body{margin: 0;overflow: hidden;}*/</style>
+    <style type="text/css">body{margin: 0;}canvas{display: block;width: 100%;height: 100vh;}</style>
     <script type="text/javascript">
         const mat4 = glMatrix.mat4; const vec3 = glMatrix.vec3; const vec2 = glMatrix.vec2;
         Math.radians = function(degrees) {return degrees * Math.PI / 180;};
@@ -107,7 +106,6 @@ void main(){
     mat3 TBN = mat3(tangent, bitangent, normal);
     vec3 worldNormal = normalize(TBN * normalMap);
 
-
     vec3 lightDir = normalize(sunLightPos - fragPos);
     vec3 diffuse =  max(dot(worldNormal, lightDir), 0.0) * diffuseStrength;
 
@@ -115,7 +113,6 @@ void main(){
     vec3 reflectDir = reflect(lightDir, worldNormal);
     vec3 specMap = texture(specularTex, ModifvTexCoord).rgb;
     vec3 specular = pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularStrength * specMap;
-
     
     vec3 color = (ambient + specular + diffuse);
     fragColor = vec4(color, 1.0) * texture(diffuseTex, ModifvTexCoord).rgba;
@@ -138,29 +135,14 @@ void main(){
     fragColor = texture(diffuseTex, ModifvTexCoord).rgba;
 }
 </script>
-
 <script id="debug-shader-fs" type="x-shader/x-fragment">#version 300 es
-    precision mediump float;
-    
-    in vec3 normal;
-    in vec3 fragPos;
-    in vec2 vTexCoord;
-    
-    out vec4 fragColor;
-    
-    void main(){
-        vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
-    
-        fragColor = vec4(1.0,0.0,0.0,1.0);
-    }
-    </script>
-
+precision mediump float; in vec3 normal;in vec3 fragPos;
+out vec4 fragColor; void main(){fragColor = vec4(1.0,0.0,0.0,1.0);}
+</script>
 <script id="shader-fs" type="x-shader/x-fragment">#version 300 es
 precision mediump float;
 
-in vec3 normal;
-in vec3 fragPos;
-in vec2 vTexCoord;
+in vec3 normal; in vec3 fragPos; in vec2 vTexCoord;
 
 out vec4 fragColor;
 
@@ -168,9 +150,7 @@ uniform sampler2D diffuseTex;
 uniform vec3 cameraPos;
 
 const vec3 ambient = 0.1 * vec3(1.0, 1.0, 1.0);
-
 const vec3 diffuseStrength = 0.9 * vec3(1.0, 1.0, 1.0);
-
 const vec3 specularStrength = 0.6 * vec3(1.0, 1.0, 1.0);
 const float specularRadius = 32.0;
 
@@ -186,11 +166,9 @@ void main(){
 
     vec3 norm = normalize(normal);
 
-    // Diffuse
     vec3 lightDir = normalize(sunLightPos - fragPos);
     vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseStrength;
 
-    // Specular
     vec3 viewDir = normalize(cameraPos - fragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
     vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius);
@@ -200,9 +178,7 @@ void main(){
     vec3 lighting =  texColor.a * ambient + diffuse + specular;
     fragColor = texColor.rgba;
 
-    if (texColor.a < 0.4) {
-        discard;
-    }
+    if (texColor.a < 0.4) {discard;}
 }
 </script>
 </head>
@@ -211,62 +187,45 @@ void main(){
 <script type="text/javascript" src="controls.js"></script>
 <script type="text/javascript">
     const gl = createContext( "myCanvas" );
-    let basicShaderProgram = new ShaderProgram();
-    let asteroidShaderProgram = new ShaderProgram();
-    let earthShaderProgram = new ShaderProgram();
-    let sunShaderProgram = new ShaderProgram();
+    gl.clearColor( 0.0, 1.0, 0.0, 1.0 ); 
 
+    let basicShaderProgram = new ShaderProgram(); let asteroidShaderProgram = new ShaderProgram();
+    let earthShaderProgram = new ShaderProgram(); let sunShaderProgram = new ShaderProgram();
     let shaderProgramsArr = [basicShaderProgram, asteroidShaderProgram, earthShaderProgram, sunShaderProgram]
 
     basicShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     basicShaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text);
     asteroidShaderProgram.createVertexShader(document.getElementById( "asteroid-shader-vs" ).text)
     asteroidShaderProgram.createFragmentShader(document.getElementById( "shader-fs" ).text)
-
     earthShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     earthShaderProgram.createFragmentShader(document.getElementById( "earth-shader-fs" ).text);
     sunShaderProgram.createVertexShader(document.getElementById( "shader-vs" ).text);
     sunShaderProgram.createFragmentShader(document.getElementById( "sun-shader-fs" ).text);
 
-    shaderProgramsArr.forEach(shaderProgram => {
-        shaderProgram.compile();
-        shaderProgram.link();
-        shaderProgram.autocatching()
-    });
+    shaderProgramsArr.forEach(shaderProgram=>{shaderProgram.compile();shaderProgram.link();shaderProgram.autocatching()});
 
     let ubo = new UBO( "UBO", basicShaderProgram, ["projection", "view", "sunLightPos"]); 
-    shaderProgramsArr.forEach(shaderProgram => {
-        ubo.attachProgram(shaderProgram)
-    });
-   
-    gl.clearColor( 0.0, 1.0, 0.0, 1.0 ); gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    shaderProgramsArr.forEach(shaderProgram => {ubo.attachProgram(shaderProgram)});
     
-
     // ---------------------------------------------------
-    const sphereGeo = createSphere( );
-    const ringGeo = createRing( );
-
     let VAOsphere = gl.createVertexArray();  let EBOsphere = gl.createBuffer();
     let VBOsphereVert = gl.createBuffer(); let VBOsphereNorm = gl.createBuffer(); let VBOsphereUvs = gl.createBuffer(); 
     
     gl.bindVertexArray(VAOsphere);
-    // position attribute
+    const sphereGeo = createSphere(); 
+
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereVert);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.vertices), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(0);
-    // normal attribute
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(0);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereNorm);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.normals), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(1);
-    // texCoord attribute
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(1);
+
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOsphereUvs);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sphereGeo.texCoords), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(2);
     
-    // index attribute
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOsphere);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(sphereGeo.indices), gl.STATIC_DRAW);
     gl.bindVertexArray(null);
@@ -275,26 +234,22 @@ void main(){
     let VBOringVert = gl.createBuffer(); let VBOringNorm = gl.createBuffer(); let VBOringUvs = gl.createBuffer(); 
 
     gl.bindVertexArray(VAOring);
-
+    const ringGeo = createRing();
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringVert);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.vertices), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(0);
     
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringNorm);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.normals), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(1);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, VBOringUvs);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(ringGeo.texCoords), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(2);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBOring);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(ringGeo.indices), gl.STATIC_DRAW);
 
     gl.bindVertexArray(null);
-
     
    // VECTORS OF LOOKAT MATRIX
     const initialCamPos   = new Float32Array([0.0, 0.0, 50.0]);
@@ -305,7 +260,6 @@ void main(){
     var cameraPos   = new Float32Array(initialCamPos)  ;
     var cameraFront = new Float32Array(initialCamFront);
     var cameraUp    = new Float32Array(initialCamUp)   ;
-
 
     let celBodies = {
         sun: {
@@ -395,8 +349,7 @@ void main(){
             textures: {diffuseTex: {file: "rock.png"},},
         }
     }
-    celBodies.earthAtm.orbitR = celBodies.earth.orbitR;
-    celBodies.earthAtm.orbitT = celBodies.earth.orbitT
+    celBodies.earthAtm.orbitR = celBodies.earth.orbitR; celBodies.earthAtm.orbitT = celBodies.earth.orbitT
     celBodies.earthAtm.scale = celBodies.earth.scale * 1.01;
 
     const createImgOnLoadCallback = function(img, texId){
@@ -432,7 +385,7 @@ void main(){
     const GLOBAL_PLANET_SCALE_MULTIPLIER = 2;
     const ASTEROID_SCALE_MULTIPLIER = 3;
     const ASTEROID_COUNT = 1000;
-    let asteroidModels = new Array(ASTEROID_COUNT)
+    let asteroidModels = new Array(ASTEROID_COUNT);
     const radius = 50; const offset = 2;
 
     for (let i = 0; i < ASTEROID_COUNT; i++) {
@@ -465,7 +418,7 @@ void main(){
     const AU = 20;
     function renderFunc( time )
     {
-        gl.viewport(0, 0, 1024 , 1024);
+        gl.viewport(0, 0, 1024 , 1024)
         //gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
         gl.enable( gl.DEPTH_TEST );
@@ -499,7 +452,6 @@ void main(){
         let view = mat4.create();
         mat4.lookAt(view, cameraPos, camPosFront, cameraUp);
      
-        
         ubo.uploadData("projection", proj);
         ubo.uploadData("view", view);
         ubo.uploadData("sunLightPos", new Float32Array([0,0,0]));
@@ -516,8 +468,6 @@ void main(){
        
         gl.bindVertexArray(VAOsphere)
         gl.drawElementsInstanced(gl.TRIANGLES, sphereGeo.indices.length, gl.UNSIGNED_INT, 0, ASTEROID_COUNT)
-           
-
 
         for(let [name, dict] of Object.entries(celBodies)) {
             dict.modelPos = mat4.create();
@@ -533,10 +483,9 @@ void main(){
                 const rotDir = new Float32Array([rotAxis[1], - rotAxis[0], rotAxis[2]]).map(x => x * AU * dict.orbitR);
                 mat4.translate(dict.modelPos,  dict.modelPos, rotDir);
                 mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
-               
             
-                if (dict.hasOwnProperty('lookAt') && dict.lookAt){
-                    
+                if (dict.hasOwnProperty('lookAt') && dict.lookAt)
+                {
                     let direction = vec3.create();
                     let parentModel =  celBodies[dict.orbitedBody].modelPos;
                     let parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
@@ -545,12 +494,10 @@ void main(){
                     vec3.normalize(direction, direction);
                     const angle = -Math.atan2(direction[2], direction[0]);
                     mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
-                    
                 }
                 else if(dict.hasOwnProperty("axisRotationT")){
                     const angle = 2 * Math.PI * timeDay / dict.axisRotationT;
                     mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
-                  
                 }
             } 
             else {mat4.rotate(dict.modelPos, dict.modelPos, 0.0, new Float32Array([1.0, 0.0, 0.0]));}
@@ -561,12 +508,12 @@ void main(){
             dict.model = mat4.create();
             mat4.multiply(dict.model, dict.model, dict.modelPos);
             mat4.multiply(dict.model, dict.model, dict.modelRot);
-            if(!dict.sphereShape)
-                mat4.rotateX(dict.model, dict.model, Math.PI / 2)
-
-            if(name != "sun")
-                mat4.scale(dict.model, dict.model, dict.scale.map(x=> x * GLOBAL_PLANET_SCALE_MULTIPLIER))                
-
+            if( ! dict.sphereShape){
+                mat4.rotateX(dict.model, dict.model, Math.PI/2)
+            }
+            if(name != "sun"){
+                mat4.scale(dict.model, dict.model, dict.scale.map(x=> x * GLOBAL_PLANET_SCALE_MULTIPLIER))
+            }     
             dict.program.bind();
             dict.program.setUniformMat4("model", dict.model);
             dict.program.setUniform3f("cameraPos", ...cameraPos);
@@ -602,27 +549,9 @@ void main(){
         requestAnimationFrame( renderFunc );
     }
 
-    function resizeCanvas()
-    {
-        const canvas = gl.canvas;
-        // Lookup the size the browser is displaying the canvas in CSS pixels.
-        const displayWidth  = window.clientWidth;
-        const displayHeight = window.innerHeight;
-
-        // Check if the canvas is not the same size.
-        const needResize = canvas.width  !== displayWidth ||
-                           canvas.height !== displayHeight;
-
-        if (needResize) {
-            // Make the canvas the same size
-            canvas.width  = displayWidth;
-            canvas.height = displayHeight;
-            gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
-        }
-    }
-
-    //window.addEventListener('resize', resizeCanvas);
-    //resizeCanvas();
+    function resizeCanvas(){const canvas = gl.canvas; const displayWidth  = window.innerWidth; const displayHeight = window.innerHeight; const needResize = canvas.width  !== displayWidth || canvas.height !== displayHeight;if (needResize) {canvas.width  = displayWidth; canvas.height = displayHeight; gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );}}
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
 
     renderFunc( 0.0 );
 </script>
