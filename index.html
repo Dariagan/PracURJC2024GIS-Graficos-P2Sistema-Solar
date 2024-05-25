@@ -167,15 +167,12 @@ out vec4 fragColor;
 uniform sampler2D diffuseTex;
 uniform vec3 cameraPos;
 
-const float ambientStrength = 0.1; 
-const vec3 ambientColor = vec3(1.0, 1.0, 1.0);
+const vec3 ambient = 0.1 * vec3(1.0, 1.0, 1.0);
 
-const float diffuseStrength = 0.9;
-const vec3 diffuseColor = vec3(1.0, 1.0, 1.0);
+const vec3 diffuseStrength = 0.9 * vec3(1.0, 1.0, 1.0);
 
-const float specularStrength = 0.6;
+const vec3 specularStrength = 0.6 * vec3(1.0, 1.0, 1.0);
 const float specularRadius = 32.0;
-const vec3 specularColor = vec3(1.0, 1.0, 1.0); 
 
 uniform UBO {
     mat4 projection;
@@ -189,17 +186,14 @@ void main(){
 
     vec3 norm = normalize(normal);
 
-    // Ambient
-    vec3 ambient = ambientStrength * ambientColor;
-
     // Diffuse
     vec3 lightDir = normalize(sunLightPos - fragPos);
-    vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseColor * diffuseStrength;
+    vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseStrength;
 
     // Specular
     vec3 viewDir = normalize(cameraPos - fragPos);
     vec3 reflectDir = reflect(-lightDir, norm);
-    vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularColor;
+    vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius);
 
     vec4 texColor = texture(diffuseTex, ModifvTexCoord);
         
@@ -437,7 +431,7 @@ void main(){
     }
     const GLOBAL_PLANET_SCALE_MULTIPLIER = 2;
     const ASTEROID_SCALE_MULTIPLIER = 3;
-    const ASTEROID_COUNT = 5000;
+    const ASTEROID_COUNT = 1000;
     let asteroidModels = new Array(ASTEROID_COUNT)
     const radius = 50; const offset = 2;
 
