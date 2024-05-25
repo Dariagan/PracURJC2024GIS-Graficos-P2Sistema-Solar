@@ -383,11 +383,13 @@ void main(){
         return Math.random() * (max - min) + min;
     }
     const GLOBAL_PLANET_SCALE_MULTIPLIER = 2;
-    const ASTEROID_SCALE_MULTIPLIER = 4;
+    const ASTEROID_SCALE_MULTIPLIER = 8;
     const ASTEROID_COUNT = 1000;
     let asteroidModels = new Array(ASTEROID_COUNT);
     const radius = 50; const offset = 2;
 
+
+    //TO-DO: ADD TIME-BASED ROTATION (THIS SHOULD BE IN RENDER FUNC)
     for (let i = 0; i < ASTEROID_COUNT; i++) {
         let model = mat4.create();
         
@@ -400,7 +402,7 @@ void main(){
         const z = Math.cos(angle) * radius + displacement;
         mat4.translate(model, model, [x, y, z]);
 
-        const scale = getRandom(0.0005, 0.0025) * GLOBAL_PLANET_SCALE_MULTIPLIER*ASTEROID_SCALE_MULTIPLIER;
+        const scale = getRandom(0.0005, 0.0025) *ASTEROID_SCALE_MULTIPLIER;
         mat4.scale(model, model, [scale, scale, scale]);
 
         const rotAngle = getRandom(0, 360);
