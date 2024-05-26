@@ -96,26 +96,24 @@ uniform UBO {
 };  
 
 void main(){
-    vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
+    const vec2 vertInvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
 
-    vec3 normalMap = normalize(texture(normalTex, ModifvTexCoord).rgb  * 2.0 - 1.0);
+    const vec3 tangent = vec3(normal.y, -normal.x, normal.z);
+    const vec3 bitangent = cross(normal, tangent);
 
-    vec3 tangent = vec3(normal.y, -normal.x, normal.z);
-    vec3 bitangent = cross(normal, tangent);
+    const mat3 TBN = mat3(tangent, bitangent, normal);
+    const vec3 normalMapFactor = normalize(texture(normalTex, vertInvTexCoord).rgb  * 2.0 - 1.0);
+    const vec3 elevationNormal = normalize(TBN * normalMapFactor);
 
-    mat3 TBN = mat3(tangent, bitangent, normal);
-    vec3 worldNormal = normalize(TBN * normalMap);
+    const vec3 lightDir = normalize(sunLightPos - fragPos);
+    const vec3 diffuse =  max(dot(elevationNormal, lightDir), 0.0) * diffuseStrength;
 
-    vec3 lightDir = normalize(sunLightPos - fragPos);
-    vec3 diffuse =  max(dot(worldNormal, lightDir), 0.0) * diffuseStrength;
-
-    vec3 viewDir = normalize(fragPos - cameraPos );
-    vec3 reflectDir = reflect(lightDir, worldNormal);
-    vec3 specMap = texture(specularTex, ModifvTexCoord).rgb;
-    vec3 specular = pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularStrength * specMap;
+    const vec3 viewDir = normalize(fragPos - cameraPos );
+    const vec3 reflectDir = reflect(lightDir, elevationNormal);
+    const vec3 specMap = texture(specularTex, vertInvTexCoord).rgb;
+    const vec3 specular = pow(max(dot(viewDir, reflectDir), 0.0), specularRadius) * specularStrength * specMap;
     
-    vec3 color = (ambient + specular + diffuse);
-    fragColor = vec4(color, 1.0) * texture(diffuseTex, ModifvTexCoord).rgba;
+    fragColor = vec4(ambient + specular + diffuse, 1.0) * texture(diffuseTex, vertInvTexCoord).rgba;
 }
 </script>
 <script id="sun-shader-fs" type="x-shader/x-fragment">#version 300 es
@@ -130,9 +128,9 @@ out vec4 fragColor;
 uniform sampler2D diffuseTex;
 
 void main(){
-    vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
+    vec2 vertInvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
 
-    fragColor = texture(diffuseTex, ModifvTexCoord).rgba;
+    fragColor = texture(diffuseTex, vertInvTexCoord).rgba;
 }
 </script>
 <script id="debug-shader-fs" type="x-shader/x-fragment">#version 300 es
@@ -162,20 +160,20 @@ uniform UBO {
 
 void main(){
 
-    vec2 ModifvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
+    const vec2 vertInvTexCoord = vec2(vTexCoord.x, -vTexCoord.y);
 
-    vec3 norm = normalize(normal);
+    const vec3 norm = normalize(normal);
 
-    vec3 lightDir = normalize(sunLightPos - fragPos);
-    vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseStrength;
+    const vec3 lightDir = normalize(sunLightPos - fragPos);
+    const vec3 diffuse = max(dot(norm, lightDir), 0.0) * diffuseStrength;
 
-    vec3 viewDir = normalize(cameraPos - fragPos);
-    vec3 reflectDir = reflect(-lightDir, norm);
-    vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius);
+    const vec3 viewDir = normalize(cameraPos - fragPos);
+    const vec3 reflectDir = reflect(-lightDir, norm);
+    const vec3 specular = specularStrength * pow(max(dot(viewDir, reflectDir), 0.0), specularRadius);
 
-    vec4 texColor = texture(diffuseTex, ModifvTexCoord);
+    const vec4 texColor = texture(diffuseTex, vertInvTexCoord);
         
-    vec3 lighting =  texColor.a * ambient + diffuse + specular;
+    const vec3 lighting =  texColor.a * ambient + diffuse + specular;
     fragColor = vec4(lighting * texColor.rgb, 1.0);
 
     if (texColor.a < 0.4) {discard;}
@@ -477,7 +475,6 @@ void main(){
             if(dict.hasOwnProperty('orbitR')){ 
                 const orbitAngle = 2 * Math.PI * timeDay / dict.orbitT;
                 
-                let orbitMat = mat4.create();
                 const rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
                 mat4.rotateY(dict.modelPos, dict.modelPos, orbitAngle)
                 mat4.translate(dict.modelPos, dict.modelPos, new Float32Array([AU * dict.orbitR, 0 , 0]));
@@ -485,10 +482,10 @@ void main(){
             
                 if (dict.hasOwnProperty('lookAt') && dict.lookAt)
                 {
+                    const parentModel = celBodies[dict.orbitedBody].modelPos;
+                    const parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
+                    const thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
                     let direction = vec3.create();
-                    let parentModel = celBodies[dict.orbitedBody].modelPos;
-                    let parentPos = new Float32Array([parentModel[12], parentModel[13], parentModel[14]]);
-                    let thisPos = new Float32Array([dict.modelPos[12], dict.modelPos[13], dict.modelPos[14]]);
                     vec3.subtract(direction, parentPos, thisPos);
                     vec3.normalize(direction, direction);
                     const angle = -Math.atan2(direction[2], direction[0]);
