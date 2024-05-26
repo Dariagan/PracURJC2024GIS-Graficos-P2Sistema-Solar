@@ -403,7 +403,7 @@ void main(){
     // --------------------------------------------------------------------------------------------------------------------------
     const oneOn60 = 1 / 60;
     const oneOn24 = 1 / 24;
-    const timeAccel = 100000;
+    const timeAccel = 10000;
     const AU = 20;
     function renderFunc( time )
     {
@@ -465,7 +465,6 @@ void main(){
             if(dict.hasOwnProperty('orbitR')){ 
                 const orbitAngle = 2 * Math.PI * timeDay / dict.orbitT;
                 
-                const rotAxis = new Float32Array([0.0, 1.0, 0.0]); // Normalize it !!!
                 mat4.rotateY(dict.modelPos, dict.modelPos, orbitAngle)
                 mat4.translate(dict.modelPos, dict.modelPos, new Float32Array([AU * dict.orbitR, 0 , 0]));
                 mat4.multiply(dict.modelPos, celBodies[dict.orbitedBody].modelPos, dict.modelPos)
@@ -479,11 +478,11 @@ void main(){
                     vec3.subtract(direction, parentPos, thisPos);
                     vec3.normalize(direction, direction);
                     const angle = -Math.atan2(direction[2], direction[0]);
-                    mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
+                    mat4.rotateY(dict.modelRot, dict.modelRot, angle);
                 }
                 else if(dict.hasOwnProperty("axisRotationT")){
                     const angle = 2 * Math.PI * timeDay / dict.axisRotationT;
-                    mat4.rotate(dict.modelRot, dict.modelRot, angle, new Float32Array([0.0, 1.0, 0.0]));
+                    mat4.rotateY(dict.modelRot, dict.modelRot, angle);
                 }
             } 
             else {mat4.rotate(dict.modelPos, dict.modelPos, 0.0, new Float32Array([1.0, 0.0, 0.0]));}
