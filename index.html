@@ -31,7 +31,7 @@ out vec2 vTexCoord;
 
 void main( )
 {
-    const mat4 model = models[gl_InstanceID];
+    mat4 model = models[gl_InstanceID];
     fragPos = vec3(model * vec4(aPos, 1.0));
     gl_Position = projection * view * model * vec4(aPos, 1.0);
     mat3 normalM = mat3(transpose(inverse(model)));
